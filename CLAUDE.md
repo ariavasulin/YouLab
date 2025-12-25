@@ -55,3 +55,19 @@ Requires Letta server running: `pip install letta && letta server`
 - `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
+
+## Thoughts Directory
+
+The `thoughts/` directory is managed separately via `humanlayer thoughts` (not committed to this repo).
+
+```
+thoughts/
+  {username}/           # Personal notes
+  shared/               # Team notes
+    research/           # Research documents
+    plans/              # Implementation plans
+  global/               # Cross-repo notes
+  searchable/           # Auto-generated (NEVER write here)
+```
+
+**Important**: Never write to `thoughts/searchable/` — it gets wiped on every sync. Write to `thoughts/shared/` instead.
