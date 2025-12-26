@@ -221,10 +221,10 @@ After structure approval:
 
 #### Automated Verification:
 - [ ] Migration applies cleanly: `make migrate`
-- [ ] Unit tests pass: `make test-component`
+- [ ] Unit tests pass: `make test`
 - [ ] Type checking passes: `npm run typecheck`
 - [ ] Linting passes: `make lint`
-- [ ] Integration tests pass: `make test-integration`
+- [ ] Integration tests pass: `make test`
 
 #### Manual Verification:
 - [ ] Feature works as expected when tested via UI

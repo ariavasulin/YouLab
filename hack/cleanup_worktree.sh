@@ -7,9 +7,9 @@ set -euo pipefail
 #
 # If no worktree name is provided, lists available worktrees to clean up
 
-# Get the base repository name
-REPO_BASE_NAME=$(basename "$(git rev-parse --show-toplevel)")
-WORKTREE_BASE_DIR="$HOME/.humanlayer/worktrees"
+# Get the repository root
+REPO_ROOT=$(git rev-parse --show-toplevel)
+WORKTREE_BASE_DIR="${REPO_ROOT}/.trees"
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,7 +29,7 @@ list_worktrees() {
 # Function to clean up a specific worktree
 cleanup_worktree() {
     local worktree_name="$1"
-    local worktree_path="$WORKTREE_BASE_DIR/${REPO_BASE_NAME}_${worktree_name}"
+    local worktree_path="$WORKTREE_BASE_DIR/${worktree_name}"
 
     # Check if worktree exists
     if ! git worktree list | grep -q "$worktree_path"; then

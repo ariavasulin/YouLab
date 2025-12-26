@@ -72,3 +72,9 @@ IMPLEMENTATION_PLAN.md
 
 # Thoughts (managed separately via humanlayer thoughts)
 thoughts/
+
+# Git worktrees (in-repo)
+.trees/
+
+# Ruff cache
+.ruff_cache/

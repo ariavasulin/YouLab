@@ -40,27 +40,24 @@ WORKTREE_NAME=${1:-$(generate_unique_name)}
 # Get base branch from second parameter or use current branch
 BASE_BRANCH=${2:-$(git branch --show-current)}
 
-# Get base directory name (should be 'humanlayer')
-REPO_BASE_NAME=$(basename "$(pwd)")
+# Get repository root
+REPO_ROOT=$(git rev-parse --show-toplevel)
 
 if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
-    WORKTREE_DIR_NAME="${WORKTREE_NAME}"
-    WORKTREES_BASE="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}/${REPO_BASE_NAME}"
+    WORKTREES_BASE="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}"
 else
-    WORKTREE_DIR_NAME="${WORKTREE_NAME}"
-    WORKTREES_BASE="$HOME/wt/${REPO_BASE_NAME}"
+    WORKTREES_BASE="${REPO_ROOT}/.trees"
 fi
 
-WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_DIR_NAME}"
+WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_NAME}"
 
 echo "🌳 Creating worktree: ${WORKTREE_NAME}"
 echo "📁 Location: ${WORKTREE_PATH}"
 
-# Check if worktrees base directory exists
+# Create worktrees directory if it doesn't exist
 if [ ! -d "$WORKTREES_BASE" ]; then
-    echo "❌ Error: Directory $WORKTREES_BASE does not exist."
-    echo "   Please create it first: mkdir -p $WORKTREES_BASE"
-    exit 1
+    echo "Creating worktrees directory: $WORKTREES_BASE"
+    mkdir -p "$WORKTREES_BASE"
 fi
 
 # Check if worktree already exists
@@ -100,27 +97,27 @@ if ! make setup; then
     exit 1
 fi
 
-# echo "🧪 Verifying worktree with checks and tests..."
-# temp_output=$(mktemp)
-# if make check test > "$temp_output" 2>&1; then
-#     rm "$temp_output"
-#     echo "✅ All checks and tests pass!"
-# else
-#     cat "$temp_output"
-#     rm "$temp_output"
-#     echo "❌ Checks and tests failed. Cleaning up worktree..."
-#     cd - > /dev/null
-#     git worktree remove --force "$WORKTREE_PATH"
-#     git branch -D "$WORKTREE_NAME" 2>/dev/null || true
-#     echo "❌ Not allowed to create worktree from a branch that isn't passing checks and tests."
-#     exit 1
-# fi
+echo "Verifying worktree with full checks..."
+temp_output=$(mktemp)
+if make verify > "$temp_output" 2>&1; then
+    rm "$temp_output"
+    echo "All checks pass!"
+else
+    cat "$temp_output"
+    rm "$temp_output"
+    echo "Verification failed. Cleaning up worktree..."
+    cd - > /dev/null
+    git worktree remove --force "$WORKTREE_PATH"
+    git branch -D "$WORKTREE_NAME" 2>/dev/null || true
+    echo "Cannot create worktree from a branch that fails verification."
+    exit 1
+fi
 
 # Initialize thoughts (non-interactive mode with hardcoded directory)
 if [ "$INIT_THOUGHTS" = true ]; then
     echo "🧠 Initializing thoughts..."
     cd "$WORKTREE_PATH"
-    if humanlayer thoughts init --directory humanlayer > /dev/null 2>&1; then
+    if humanlayer thoughts init --directory YouLab > /dev/null 2>&1; then
         echo "✅ Thoughts initialized!"
         # Run sync to create searchable directory
         if humanlayer thoughts sync > /dev/null 2>&1; then
