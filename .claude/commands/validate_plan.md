@@ -24,7 +24,7 @@ When invoked:
    git diff HEAD~N..HEAD  # Where N covers implementation commits
 
    # Run comprehensive checks
-   cd $(git rev-parse --show-toplevel) && make check test
+   cd $(git rev-parse --show-toplevel) && make verify
    ```
 
 ## Validation Process

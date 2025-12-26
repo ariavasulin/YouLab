@@ -1,0 +1,31 @@
+# Pre-commit hooks for YouLab
+# Runs full verification (lint + typecheck + tests) before each commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check (with auto-fix)
+        entry: uv run ruff check --fix
+        language: system
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+
+      - id: mypy
+        name: mypy typecheck
+        entry: uv run mypy src/
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        types: [python]
+        pass_filenames: false
