@@ -4,7 +4,7 @@ Default agent configuration and factory functions.
 Provides pre-configured agents for common use cases.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from letta_starter.agents.base import BaseAgent
 from letta_starter.memory.blocks import (
@@ -20,7 +20,7 @@ from letta_starter.observability.tracing import Tracer
 def create_default_agent(
     client: Any,
     name: str = "default",
-    tracer: Optional[Tracer] = None,
+    tracer: Tracer | None = None,
 ) -> BaseAgent:
     """
     Create a default general-purpose agent.
@@ -45,7 +45,7 @@ def create_default_agent(
 def create_coding_agent(
     client: Any,
     name: str = "coder",
-    tracer: Optional[Tracer] = None,
+    tracer: Tracer | None = None,
 ) -> BaseAgent:
     """
     Create a coding assistant agent.
@@ -72,7 +72,7 @@ def create_coding_agent(
 def create_research_agent(
     client: Any,
     name: str = "researcher",
-    tracer: Optional[Tracer] = None,
+    tracer: Tracer | None = None,
 ) -> BaseAgent:
     """
     Create a research assistant agent.
@@ -101,13 +101,13 @@ def create_custom_agent(
     name: str,
     role: str,
     capabilities: list[str],
-    expertise: Optional[list[str]] = None,
+    expertise: list[str] | None = None,
     tone: str = "professional",
     verbosity: str = "concise",
-    constraints: Optional[list[str]] = None,
-    user_name: Optional[str] = None,
-    user_role: Optional[str] = None,
-    tracer: Optional[Tracer] = None,
+    constraints: list[str] | None = None,
+    user_name: str | None = None,
+    user_role: str | None = None,
+    tracer: Tracer | None = None,
 ) -> BaseAgent:
     """
     Create a custom agent with specified configuration.
@@ -161,7 +161,7 @@ class AgentRegistry:
     coordinate between different specialized agents.
     """
 
-    def __init__(self, client: Any, tracer: Optional[Tracer] = None):
+    def __init__(self, client: Any, tracer: Tracer | None = None):
         """
         Initialize the registry.
 
@@ -182,7 +182,7 @@ class AgentRegistry:
         """
         self._agents[agent.name] = agent
 
-    def get(self, name: str) -> Optional[BaseAgent]:
+    def get(self, name: str) -> BaseAgent | None:
         """
         Get an agent by name.
 
@@ -232,7 +232,7 @@ class AgentRegistry:
         """Get list of registered agent names."""
         return list(self._agents.keys())
 
-    def remove(self, name: str) -> Optional[BaseAgent]:
+    def remove(self, name: str) -> BaseAgent | None:
         """
         Remove an agent from the registry.
 

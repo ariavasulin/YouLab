@@ -5,7 +5,6 @@ These strategies determine when and how to rotate context from
 core memory to archival memory, optimizing the context window usage.
 """
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -129,8 +128,8 @@ class PreservativeRotation:
         current_chars = 0
 
         # Prioritize lines with markers (structured content)
-        priority_lines = [l for l in lines if l.startswith("[")]
-        other_lines = [l for l in lines if not l.startswith("[")]
+        priority_lines = [line for line in lines if line.startswith("[")]
+        other_lines = [line for line in lines if not line.startswith("[")]
 
         # Add priority lines first
         for line in priority_lines:
@@ -157,7 +156,7 @@ class AdaptiveRotation:
     base_threshold: float = 0.8
     recent_rotations: list[float] = []
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.recent_rotations = []
 
     def should_rotate(self, metrics: ContextMetrics) -> bool:

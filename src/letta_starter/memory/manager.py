@@ -10,11 +10,11 @@ This is the central coordinator for all memory operations:
 
 import time
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock, SessionState
+from letta_starter.memory.blocks import HumanBlock, PersonaBlock
 from letta_starter.memory.strategies import (
     AdaptiveRotation,
     ContextMetrics,
@@ -40,7 +40,7 @@ class MemoryManager:
         client: Any,
         agent_id: str,
         max_chars: int = 1500,
-        strategy: Optional[ContextStrategy] = None,
+        strategy: ContextStrategy | None = None,
     ):
         """
         Initialize the memory manager.
@@ -58,9 +58,9 @@ class MemoryManager:
         self.logger = logger.bind(agent_id=agent_id, component="memory_manager")
 
         # Track state
-        self._persona_block: Optional[PersonaBlock] = None
-        self._human_block: Optional[HumanBlock] = None
-        self._last_rotation: Optional[float] = None
+        self._persona_block: PersonaBlock | None = None
+        self._human_block: HumanBlock | None = None
+        self._last_rotation: float | None = None
 
     def get_metrics(self) -> ContextMetrics:
         """Get current memory usage metrics."""
@@ -78,7 +78,7 @@ class MemoryManager:
         """Get current persona memory string from agent."""
         try:
             memory = self.client.get_agent_memory(self.agent_id)
-            return memory.get("persona", "")
+            return str(memory.get("persona", ""))
         except Exception as e:
             self.logger.warning("failed_to_get_persona", error=str(e))
             return ""
@@ -87,7 +87,7 @@ class MemoryManager:
         """Get current human memory string from agent."""
         try:
             memory = self.client.get_agent_memory(self.agent_id)
-            return memory.get("human", "")
+            return str(memory.get("human", ""))
         except Exception as e:
             self.logger.warning("failed_to_get_human", error=str(e))
             return ""
@@ -170,7 +170,7 @@ class MemoryManager:
             self.logger.error("failed_to_update_human", error=str(e))
             raise
 
-    def set_task(self, task: str, context: Optional[str] = None) -> None:
+    def set_task(self, task: str, context: str | None = None) -> None:
         """
         Set the current task in human memory.
 
@@ -252,7 +252,7 @@ class MemoryManager:
         timestamp = datetime.now().isoformat()
         task_summary = f"""[TASK COMPLETED {timestamp}]
 Task: {human.current_task}
-Context: {'; '.join(human.context_notes[-5:])}"""
+Context: {"; ".join(human.context_notes[-5:])}"""
 
         try:
             self.client.insert_archival_memory(
@@ -285,7 +285,7 @@ Context: {'; '.join(human.context_notes[-5:])}"""
             self.logger.warning("archival_search_failed", error=str(e))
             return []
 
-    def get_summary(self) -> dict:
+    def get_summary(self) -> dict[str, object]:
         """Get a summary of current memory state."""
         metrics = self.get_metrics()
         human = self.get_human_block()

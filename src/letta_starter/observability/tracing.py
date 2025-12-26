@@ -5,14 +5,16 @@ Provides a simple, consistent interface for tracing LLM calls
 that works standalone or with external tracing backends.
 """
 
+import contextlib
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Generator, Optional
+from typing import Any
 
 import structlog
 
-from letta_starter.observability.metrics import LLMCallRecord, get_metrics_collector
+from letta_starter.observability.metrics import get_metrics_collector
 
 logger = structlog.get_logger()
 
@@ -31,11 +33,11 @@ class LLMCallMetrics:
     latency_ms: float = 0
     cost_usd: float = 0
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
 
     # Additional metadata
-    agent_name: Optional[str] = None
-    session_id: Optional[str] = None
+    agent_name: str | None = None
+    session_id: str | None = None
 
 
 class Tracer:
@@ -50,7 +52,7 @@ class Tracer:
 
     def __init__(
         self,
-        langfuse_client: Optional[Any] = None,
+        langfuse_client: Any | None = None,
         service_name: str = "letta-starter",
     ):
         """
@@ -62,11 +64,11 @@ class Tracer:
         """
         self.langfuse = langfuse_client
         self.service_name = service_name
-        self._current_trace: Optional[Any] = None
-        self._current_session_id: Optional[str] = None
+        self._current_trace: Any | None = None
+        self._current_session_id: str | None = None
         self.logger = logger.bind(component="tracer")
 
-    def start_session(self, session_id: str, user_id: Optional[str] = None) -> None:
+    def start_session(self, session_id: str, user_id: str | None = None) -> None:
         """
         Start a new tracing session.
 
@@ -161,14 +163,12 @@ class Tracer:
         # Start Langfuse generation if available
         generation = None
         if self.langfuse and self._current_trace:
-            try:
+            with contextlib.suppress(Exception):
                 generation = self._current_trace.generation(
                     name=f"{agent_name}-{operation}",
                     model=model,
                     metadata={"agent": agent_name, "operation": operation},
                 )
-            except Exception:
-                pass
 
         try:
             yield metrics
@@ -195,13 +195,12 @@ class Tracer:
 
             # Complete Langfuse generation
             if generation:
-                try:
+                with contextlib.suppress(Exception):
                     generation.end(
                         usage={
                             "prompt_tokens": metrics.prompt_tokens,
                             "completion_tokens": metrics.completion_tokens,
-                            "total_tokens": metrics.prompt_tokens
-                            + metrics.completion_tokens,
+                            "total_tokens": metrics.prompt_tokens + metrics.completion_tokens,
                         },
                         metadata={
                             "latency_ms": metrics.latency_ms,
@@ -209,8 +208,6 @@ class Tracer:
                             "error": metrics.error,
                         },
                     )
-                except Exception:
-                    pass
 
             # Log the call
             self.logger.info(
@@ -254,7 +251,7 @@ class Tracer:
 
         # Add to Langfuse span if available
         if self.langfuse and self._current_trace:
-            try:
+            with contextlib.suppress(Exception):
                 self._current_trace.span(
                     name=f"memory-{operation}",
                     metadata={
@@ -263,12 +260,10 @@ class Tracer:
                         "agent_id": agent_id,
                     },
                 )
-            except Exception:
-                pass
 
 
 # Global tracer instance
-_tracer: Optional[Tracer] = None
+_tracer: Tracer | None = None
 
 
 def get_tracer() -> Tracer:
@@ -281,8 +276,8 @@ def get_tracer() -> Tracer:
 
 def init_tracer(
     langfuse_enabled: bool = False,
-    langfuse_public_key: Optional[str] = None,
-    langfuse_secret_key: Optional[str] = None,
+    langfuse_public_key: str | None = None,
+    langfuse_secret_key: str | None = None,
     langfuse_host: str = "https://cloud.langfuse.com",
     service_name: str = "letta-starter",
 ) -> Tracer:

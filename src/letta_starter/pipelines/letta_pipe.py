@@ -9,7 +9,8 @@ This file can be:
 The Pipeline class follows Open WebUI's pipeline specification.
 """
 
-from typing import Generator, Iterator, List, Optional, Union
+from collections.abc import Generator, Iterator
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -46,12 +47,12 @@ class Pipeline:
             description="Enable detailed logging",
         )
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the pipeline."""
         self.name = "Letta Agent"
         self.valves = self.Valves()
         self.client = None
-        self.agent_id: Optional[str] = None
+        self.agent_id: str | None = None
 
     async def on_startup(self) -> None:
         """
@@ -140,9 +141,9 @@ class Pipeline:
         self,
         user_message: str,
         model_id: str,
-        messages: List[dict],
-        body: dict,
-    ) -> Union[str, Generator, Iterator]:
+        messages: list[dict[str, Any]],
+        body: dict[str, Any],
+    ) -> str | Generator[str, None, None] | Iterator[str]:
         """
         Process a message through the Letta agent.
 
@@ -182,7 +183,7 @@ class Pipeline:
                 print(f"ERROR: {error_msg}")
             return error_msg
 
-    def _extract_response(self, response) -> str:
+    def _extract_response(self, response: Any) -> str:
         """Extract text from Letta response object."""
         texts = []
 
@@ -202,7 +203,7 @@ class Pipeline:
 if __name__ == "__main__":
     import asyncio
 
-    async def test():
+    async def test() -> None:
         pipeline = Pipeline()
         await pipeline.on_startup()
 

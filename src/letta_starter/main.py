@@ -9,7 +9,7 @@ This module provides:
 
 import sys
 import uuid
-from typing import Optional
+from typing import Any
 
 import structlog
 
@@ -18,7 +18,7 @@ from letta_starter.observability.logging import configure_logging
 from letta_starter.observability.tracing import get_tracer, init_tracer
 
 
-def initialize(settings: Optional[Settings] = None) -> None:
+def initialize(settings: Settings | None = None) -> None:
     """
     Initialize the application.
 
@@ -54,7 +54,7 @@ def initialize(settings: Optional[Settings] = None) -> None:
     )
 
 
-def create_client(settings: Optional[Settings] = None):
+def create_client(settings: Settings | None = None) -> Any:
     """
     Create a Letta client.
 
@@ -71,10 +71,8 @@ def create_client(settings: Optional[Settings] = None):
         from letta import create_client as letta_create_client
 
         return letta_create_client(base_url=settings.letta_base_url)
-    except ImportError:
-        raise ImportError(
-            "letta package not installed. Run: uv add letta"
-        )
+    except ImportError as err:
+        raise ImportError("letta package not installed. Run: uv add letta") from err
 
 
 def interactive_session(agent_name: str = "default") -> None:
@@ -112,7 +110,7 @@ def interactive_session(agent_name: str = "default") -> None:
     session_id = str(uuid.uuid4())[:8]
     tracer.start_session(session_id)
 
-    print(f"\nLettaStarter Interactive Session")
+    print("\nLettaStarter Interactive Session")
     print(f"Agent: {agent.name}")
     print(f"Session: {session_id}")
     print("-" * 40)
@@ -174,9 +172,7 @@ def main() -> None:
     """Main entry point for CLI."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="LettaStarter - Context-engineered Letta agents"
-    )
+    parser = argparse.ArgumentParser(description="LettaStarter - Context-engineered Letta agents")
     parser.add_argument(
         "--agent",
         "-a",
