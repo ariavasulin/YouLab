@@ -1,7 +1,6 @@
 """Application settings loaded from environment variables."""
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,7 +25,7 @@ class Settings(BaseSettings):
         default="http://localhost:8283",
         description="URL of the Letta server",
     )
-    letta_api_key: Optional[str] = Field(
+    letta_api_key: str | None = Field(
         default=None,
         description="API key for Letta server (if required)",
     )
@@ -40,11 +39,11 @@ class Settings(BaseSettings):
         default="gpt-4",
         description="Default LLM model to use",
     )
-    openai_api_key: Optional[str] = Field(
+    openai_api_key: str | None = Field(
         default=None,
         description="OpenAI API key",
     )
-    anthropic_api_key: Optional[str] = Field(
+    anthropic_api_key: str | None = Field(
         default=None,
         description="Anthropic API key",
     )
@@ -68,11 +67,11 @@ class Settings(BaseSettings):
         default=False,
         description="Enable Langfuse LLM tracing",
     )
-    langfuse_public_key: Optional[str] = Field(
+    langfuse_public_key: str | None = Field(
         default=None,
         description="Langfuse public key",
     )
-    langfuse_secret_key: Optional[str] = Field(
+    langfuse_secret_key: str | None = Field(
         default=None,
         description="Langfuse secret key",
     )

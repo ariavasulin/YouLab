@@ -8,7 +8,6 @@ or used for monitoring without external dependencies.
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 
 import structlog
 
@@ -26,7 +25,7 @@ class LLMCallRecord:
     latency_ms: float
     cost_usd: float
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
     def total_tokens(self) -> int:
@@ -39,7 +38,7 @@ class SessionMetrics:
 
     session_id: str
     start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
+    end_time: float | None = None
     calls: list[LLMCallRecord] = field(default_factory=list)
 
     @property
@@ -87,7 +86,7 @@ class SessionMetrics:
             return 0
         return self.failed_calls / len(self.calls)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Export metrics as dictionary."""
         return {
             "session_id": self.session_id,
@@ -129,9 +128,9 @@ class MetricsCollector:
         "claude-3.5-sonnet": {"input": 0.003, "output": 0.015},
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sessions: dict[str, SessionMetrics] = {}
-        self.current_session: Optional[SessionMetrics] = None
+        self.current_session: SessionMetrics | None = None
         self._all_time_calls: list[LLMCallRecord] = []
 
     def start_session(self, session_id: str) -> SessionMetrics:
@@ -151,7 +150,7 @@ class MetricsCollector:
         logger.info("metrics_session_started", session_id=session_id)
         return session
 
-    def end_session(self, session_id: Optional[str] = None) -> Optional[SessionMetrics]:
+    def end_session(self, session_id: str | None = None) -> SessionMetrics | None:
         """
         End a metrics session.
 
@@ -161,10 +160,7 @@ class MetricsCollector:
         Returns:
             The ended session metrics
         """
-        if session_id:
-            session = self.sessions.get(session_id)
-        else:
-            session = self.current_session
+        session = self.sessions.get(session_id) if session_id else self.current_session
 
         if session:
             session.end_time = time.time()
@@ -186,8 +182,8 @@ class MetricsCollector:
         completion_tokens: int,
         latency_ms: float,
         success: bool = True,
-        error: Optional[str] = None,
-        session_id: Optional[str] = None,
+        error: str | None = None,
+        session_id: str | None = None,
     ) -> LLMCallRecord:
         """
         Record an LLM call.
@@ -232,9 +228,7 @@ class MetricsCollector:
 
         return record
 
-    def _estimate_cost(
-        self, model: str, prompt_tokens: int, completion_tokens: int
-    ) -> float:
+    def _estimate_cost(self, model: str, prompt_tokens: int, completion_tokens: int) -> float:
         """Estimate cost for an LLM call."""
         # Find matching model costs
         model_lower = model.lower()
@@ -254,15 +248,15 @@ class MetricsCollector:
 
         return input_cost + output_cost
 
-    def get_session(self, session_id: str) -> Optional[SessionMetrics]:
+    def get_session(self, session_id: str) -> SessionMetrics | None:
         """Get metrics for a specific session."""
         return self.sessions.get(session_id)
 
-    def get_current_session(self) -> Optional[SessionMetrics]:
+    def get_current_session(self) -> SessionMetrics | None:
         """Get current session metrics."""
         return self.current_session
 
-    def get_all_time_stats(self) -> dict:
+    def get_all_time_stats(self) -> dict[str, object]:
         """Get all-time aggregated statistics."""
         if not self._all_time_calls:
             return {
@@ -283,15 +277,14 @@ class MetricsCollector:
             "failed_calls": failed,
             "error_rate": round(failed / len(self._all_time_calls), 4),
             "avg_latency_ms": round(
-                sum(c.latency_ms for c in self._all_time_calls)
-                / len(self._all_time_calls),
+                sum(c.latency_ms for c in self._all_time_calls) / len(self._all_time_calls),
                 2,
             ),
         }
 
 
 # Global collector instance
-_collector: Optional[MetricsCollector] = None
+_collector: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:

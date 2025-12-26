@@ -5,7 +5,7 @@ All agents in the system should inherit from BaseAgent to get
 consistent logging, tracing, and memory handling.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 import structlog
 
@@ -31,7 +31,7 @@ class BaseAgent:
         persona: PersonaBlock,
         human: HumanBlock,
         client: Any,
-        tracer: Optional[Tracer] = None,
+        tracer: Tracer | None = None,
         max_memory_chars: int = 1500,
     ):
         """
@@ -83,7 +83,7 @@ class BaseAgent:
             agent_id=self.agent_id,
         )
 
-    def send_message(self, message: str, session_id: Optional[str] = None) -> str:
+    def send_message(self, message: str, session_id: str | None = None) -> str:
         """
         Send a message to the agent and get a response.
 
@@ -110,12 +110,8 @@ class BaseAgent:
 
                 # Try to extract token usage from response
                 if hasattr(response, "usage"):
-                    metrics.prompt_tokens = getattr(
-                        response.usage, "prompt_tokens", 0
-                    )
-                    metrics.completion_tokens = getattr(
-                        response.usage, "completion_tokens", 0
-                    )
+                    metrics.prompt_tokens = getattr(response.usage, "prompt_tokens", 0)
+                    metrics.completion_tokens = getattr(response.usage, "completion_tokens", 0)
 
                 response_text = self._extract_response_text(response)
 
@@ -168,7 +164,7 @@ class BaseAgent:
 
         return "\n".join(texts) if texts else ""
 
-    def update_context(self, task: Optional[str] = None, note: Optional[str] = None) -> None:
+    def update_context(self, task: str | None = None, note: str | None = None) -> None:
         """
         Update the agent's context.
 
@@ -181,7 +177,7 @@ class BaseAgent:
         if note:
             self.memory.add_context(note)
 
-    def learn(self, preference: Optional[str] = None, fact: Optional[str] = None) -> None:
+    def learn(self, preference: str | None = None, fact: str | None = None) -> None:
         """
         Record learned information about the user.
 
@@ -194,7 +190,7 @@ class BaseAgent:
         if fact:
             self.memory.learn_fact(fact)
 
-    def get_memory_summary(self) -> dict:
+    def get_memory_summary(self) -> dict[str, object]:
         """Get a summary of the agent's memory state."""
         return self.memory.get_summary()
 

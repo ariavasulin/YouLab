@@ -146,12 +146,16 @@ class TestContextStrategies:
         strategy = AggressiveRotation()
 
         below_threshold = ContextMetrics(
-            persona_chars=500, human_chars=1000,
-            persona_max=1500, human_max=1500,
+            persona_chars=500,
+            human_chars=1000,
+            persona_max=1500,
+            human_max=1500,
         )
         above_threshold = ContextMetrics(
-            persona_chars=500, human_chars=1200,
-            persona_max=1500, human_max=1500,
+            persona_chars=500,
+            human_chars=1200,
+            persona_max=1500,
+            human_max=1500,
         )
 
         assert not strategy.should_rotate(below_threshold)
@@ -162,12 +166,16 @@ class TestContextStrategies:
         strategy = PreservativeRotation()
 
         below_threshold = ContextMetrics(
-            persona_chars=500, human_chars=1200,
-            persona_max=1500, human_max=1500,
+            persona_chars=500,
+            human_chars=1200,
+            persona_max=1500,
+            human_max=1500,
         )
         above_threshold = ContextMetrics(
-            persona_chars=500, human_chars=1400,
-            persona_max=1500, human_max=1500,
+            persona_chars=500,
+            human_chars=1400,
+            persona_max=1500,
+            human_max=1500,
         )
 
         assert not strategy.should_rotate(below_threshold)
@@ -178,8 +186,10 @@ class TestContextStrategies:
         strategy = AdaptiveRotation()
 
         metrics = ContextMetrics(
-            persona_chars=500, human_chars=1300,
-            persona_max=1500, human_max=1500,
+            persona_chars=500,
+            human_chars=1300,
+            persona_max=1500,
+            human_max=1500,
         )
 
         # Should trigger around 80% by default

@@ -7,17 +7,18 @@ log aggregation systems (ELK, CloudWatch, Datadog, etc.).
 
 import logging
 import sys
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 import structlog
 
 
-def add_service_context(service_name: str):
+def add_service_context(
+    service_name: str,
+) -> Callable[[Any, str, dict[str, Any]], dict[str, Any]]:
     """Create a processor that adds service context to all log entries."""
 
-    def processor(
-        logger: Any, method_name: str, event_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    def processor(logger: Any, method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
         event_dict["service"] = service_name
         return event_dict
 
@@ -89,7 +90,7 @@ def get_logger(name: str | None = None) -> structlog.BoundLogger:
     logger = structlog.get_logger()
     if name:
         logger = logger.bind(logger_name=name)
-    return logger
+    return cast(structlog.BoundLogger, logger)
 
 
 # Convenience functions for common log patterns

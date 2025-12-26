@@ -5,8 +5,9 @@ This is the heart of context engineering - structured, validated memory blocks
 that maximize the utility of every token in the LLM's context window.
 """
 
+import contextlib
 from enum import Enum
-from typing import Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -99,7 +100,7 @@ class PersonaBlock(BaseModel):
     @classmethod
     def from_memory_string(cls, memory_str: str) -> "PersonaBlock":
         """Parse a memory string back into a PersonaBlock (best effort)."""
-        data: dict = {"role": "Assistant"}
+        data: dict[str, Any] = {"role": "Assistant"}
 
         for line in memory_str.strip().split("\n"):
             if line.startswith("[IDENTITY]"):
@@ -136,17 +137,17 @@ class HumanBlock(BaseModel):
     """
 
     # User identity (optional, learned over time)
-    name: Optional[str] = Field(
+    name: str | None = Field(
         default=None,
         description="User's name",
     )
-    role: Optional[str] = Field(
+    role: str | None = Field(
         default=None,
         description="User's role/profession",
     )
 
     # Current session
-    current_task: Optional[str] = Field(
+    current_task: str | None = Field(
         default=None,
         description="What the user is currently working on",
     )
@@ -240,7 +241,7 @@ class HumanBlock(BaseModel):
     @classmethod
     def from_memory_string(cls, memory_str: str) -> "HumanBlock":
         """Parse a memory string back into a HumanBlock (best effort)."""
-        data: dict = {}
+        data: dict[str, Any] = {}
 
         for line in memory_str.strip().split("\n"):
             if line.startswith("[USER]"):
@@ -255,10 +256,8 @@ class HumanBlock(BaseModel):
                 data["current_task"] = line.replace("[TASK]", "").strip()
             elif line.startswith("[STATE]"):
                 state_str = line.replace("[STATE]", "").strip()
-                try:
+                with contextlib.suppress(ValueError):
                     data["session_state"] = SessionState(state_str)
-                except ValueError:
-                    pass
             elif line.startswith("[PREFS]"):
                 prefs = line.replace("[PREFS]", "").strip()
                 data["preferences"] = [p.strip() for p in prefs.split(";")]
