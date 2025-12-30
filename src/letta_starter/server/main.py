@@ -16,6 +16,8 @@ from letta_starter.server.schemas import (
     CreateAgentRequest,
     HealthResponse,
 )
+from letta_starter.server.strategy import init_strategy_manager
+from letta_starter.server.strategy import router as strategy_router
 from letta_starter.server.tracing import trace_chat, trace_generation
 
 log = structlog.get_logger()
@@ -28,6 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup
     log.info("starting_service", host=settings.host, port=settings.port)
     app.state.agent_manager = AgentManager(letta_base_url=settings.letta_base_url)
+    init_strategy_manager(letta_base_url=settings.letta_base_url)
 
     # Rebuild cache from Letta
     try:
@@ -48,6 +51,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Include strategy router
+app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
 
 
 def get_agent_manager() -> AgentManager:
