@@ -32,6 +32,7 @@ def create_default_agent(
 
     Returns:
         Configured BaseAgent
+
     """
     return BaseAgent(
         name=name,
@@ -57,6 +58,7 @@ def create_coding_agent(
 
     Returns:
         Configured BaseAgent for coding tasks
+
     """
     return BaseAgent(
         name=name,
@@ -84,6 +86,7 @@ def create_research_agent(
 
     Returns:
         Configured BaseAgent for research tasks
+
     """
     return BaseAgent(
         name=name,
@@ -127,6 +130,7 @@ def create_custom_agent(
 
     Returns:
         Custom configured BaseAgent
+
     """
     persona = PersonaBlock(
         name=name.title(),
@@ -168,6 +172,7 @@ class AgentRegistry:
         Args:
             client: Letta client (shared by all agents)
             tracer: Optional tracer (shared by all agents)
+
         """
         self.client = client
         self.tracer = tracer
@@ -179,6 +184,7 @@ class AgentRegistry:
 
         Args:
             agent: Agent to register
+
         """
         self._agents[agent.name] = agent
 
@@ -191,6 +197,7 @@ class AgentRegistry:
 
         Returns:
             Agent if found, None otherwise
+
         """
         return self._agents.get(name)
 
@@ -210,6 +217,7 @@ class AgentRegistry:
 
         Returns:
             Created and registered agent
+
         """
         factories = {
             "default": create_default_agent,
@@ -241,6 +249,7 @@ class AgentRegistry:
 
         Returns:
             Removed agent if found
+
         """
         return self._agents.pop(name, None)
 

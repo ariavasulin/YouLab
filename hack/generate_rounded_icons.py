@@ -10,7 +10,9 @@ import subprocess
 
 from PIL import Image, ImageDraw
 
-SOURCE_ICON = "/Users/dex/go/src/github.com/metalytics-dev/metalytics/app/public/humanlayer-dark.png"
+SOURCE_ICON = (
+    "/Users/dex/go/src/github.com/metalytics-dev/metalytics/app/public/humanlayer-dark.png"
+)
 ICON_DIR = "/Users/dex/wt/humanlayer/eng-1689/humanlayer-wui/src-tauri/icons"
 
 
@@ -88,16 +90,18 @@ def main():
     for size, filename in icon_sizes:
         if filename == "icon_512x512@2x.png":
             # Just copy the already generated icon
-            subprocess.run(["cp", f"{ICON_DIR}/icon.png", f"{iconset_dir}/{filename}"])
+            subprocess.run(["cp", f"{ICON_DIR}/icon.png", f"{iconset_dir}/{filename}"], check=False)
         else:
             create_rounded_icon(SOURCE_ICON, f"{iconset_dir}/{filename}", size)
 
     # Convert to .icns
     print("\nConverting to .icns format...")
-    subprocess.run(["iconutil", "-c", "icns", iconset_dir, "-o", f"{ICON_DIR}/icon.icns"])
+    subprocess.run(
+        ["iconutil", "-c", "icns", iconset_dir, "-o", f"{ICON_DIR}/icon.icns"], check=False
+    )
 
     # Cleanup
-    subprocess.run(["rm", "-rf", iconset_dir])
+    subprocess.run(["rm", "-rf", iconset_dir], check=False)
 
     print("\nDone! All icons have been generated with rounded corners.")
     print("Note: Windows .ico file kept as-is (Windows doesn't typically use rounded corners)")

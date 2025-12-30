@@ -38,6 +38,7 @@ def configure_logging(
         json_output: If True, output JSON logs (for production).
                     If False, output pretty console logs (for development).
         service_name: Service name to include in all log entries
+
     """
     # Base processors that run for all log entries
     processors: list[Any] = [
@@ -86,11 +87,12 @@ def get_logger(name: str | None = None) -> structlog.BoundLogger:
 
     Returns:
         Bound structlog logger
+
     """
     logger = structlog.get_logger()
     if name:
         logger = logger.bind(logger_name=name)
-    return cast(structlog.BoundLogger, logger)
+    return cast("structlog.BoundLogger", logger)
 
 
 # Convenience functions for common log patterns
@@ -118,6 +120,7 @@ def log_llm_call(
         success: Whether the call succeeded
         error: Error message if failed
         **extra: Additional fields to log
+
     """
     logger.info(
         "llm_call",
@@ -151,6 +154,7 @@ def log_agent_message(
         message_length: Length of the message
         session_id: Session identifier
         **extra: Additional fields to log
+
     """
     logger.info(
         "agent_message",
@@ -180,6 +184,7 @@ def log_memory_operation(
         chars: Characters involved
         agent_id: Agent ID
         **extra: Additional fields to log
+
     """
     logger.info(
         "memory_operation",

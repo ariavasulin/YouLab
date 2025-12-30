@@ -26,6 +26,7 @@ def initialize(settings: Settings | None = None) -> None:
 
     Args:
         settings: Optional settings (default: load from environment)
+
     """
     if settings is None:
         settings = get_settings()
@@ -63,6 +64,7 @@ def create_client(settings: Settings | None = None) -> Any:
 
     Returns:
         Configured Letta client
+
     """
     if settings is None:
         settings = get_settings()
@@ -81,6 +83,7 @@ def interactive_session(agent_name: str = "default") -> None:
 
     Args:
         agent_name: Name of the agent to use
+
     """
     settings = get_settings()
     initialize(settings)
