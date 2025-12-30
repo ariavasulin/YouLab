@@ -44,8 +44,8 @@ class TestCreateAgentEndpoint:
 
     def test_create_agent_success(self, test_client, mock_agent_manager):
         """Test successful agent creation."""
-        mock_agent_manager.create_agent = lambda **kw: "new-agent-id"
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.create_agent = lambda **_kw: "new-agent-id"
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "new-agent-id",
             "user_id": "user123",
             "agent_type": "tutor",
@@ -62,8 +62,8 @@ class TestCreateAgentEndpoint:
 
     def test_create_agent_with_name(self, test_client, mock_agent_manager):
         """Test agent creation with user name."""
-        mock_agent_manager.create_agent = lambda **kw: "new-agent-id"
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.create_agent = lambda **_kw: "new-agent-id"
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "new-agent-id",
             "user_id": "user123",
             "agent_type": "tutor",
@@ -110,7 +110,7 @@ class TestGetAgentEndpoint:
 
     def test_get_agent_success(self, test_client, mock_agent_manager):
         """Test successful agent retrieval."""
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "agent-123",
             "user_id": "user123",
             "agent_type": "tutor",
@@ -126,7 +126,7 @@ class TestGetAgentEndpoint:
 
     def test_get_agent_not_found(self, test_client, mock_agent_manager):
         """Test 404 for nonexistent agent."""
-        mock_agent_manager.get_agent_info = lambda aid: None
+        mock_agent_manager.get_agent_info = lambda _aid: None
 
         response = test_client.get("/agents/nonexistent")
 
@@ -142,7 +142,7 @@ class TestListAgentsEndpoint:
             "Client",
             (),
             {
-                "list_agents": lambda self: [
+                "list_agents": lambda _self: [
                     type(
                         "Agent",
                         (),
@@ -167,12 +167,12 @@ class TestListAgentsEndpoint:
 
     def test_list_agents_by_user(self, test_client, mock_agent_manager):
         """Test listing agents filtered by user_id."""
-        mock_agent_manager.list_user_agents = lambda uid: [
+        mock_agent_manager.list_user_agents = lambda _uid: [
             {
                 "agent_id": "agent-1",
-                "user_id": uid,
+                "user_id": _uid,
                 "agent_type": "tutor",
-                "agent_name": f"youlab_{uid}_tutor",
+                "agent_name": f"youlab_{_uid}_tutor",
                 "created_at": None,
             }
         ]
@@ -190,14 +190,14 @@ class TestChatEndpoint:
 
     def test_chat_success(self, test_client, mock_agent_manager):
         """Test successful chat message."""
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "agent-123",
             "user_id": "user123",
             "agent_type": "tutor",
             "agent_name": "youlab_user123_tutor",
             "created_at": None,
         }
-        mock_agent_manager.send_message = lambda aid, msg: "Hello! I'm your coach."
+        mock_agent_manager.send_message = lambda _aid, _msg: "Hello! I'm your coach."
 
         response = test_client.post(
             "/chat",
@@ -214,14 +214,14 @@ class TestChatEndpoint:
 
     def test_chat_with_context(self, test_client, mock_agent_manager):
         """Test chat with chat_id and chat_title."""
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "agent-123",
             "user_id": "user123",
             "agent_type": "tutor",
             "agent_name": "youlab_user123_tutor",
             "created_at": None,
         }
-        mock_agent_manager.send_message = lambda aid, msg: "Response"
+        mock_agent_manager.send_message = lambda _aid, _msg: "Response"
 
         response = test_client.post(
             "/chat",
@@ -237,7 +237,7 @@ class TestChatEndpoint:
 
     def test_chat_agent_not_found(self, test_client, mock_agent_manager):
         """Test 404 when agent doesn't exist."""
-        mock_agent_manager.get_agent_info = lambda aid: None
+        mock_agent_manager.get_agent_info = lambda _aid: None
 
         response = test_client.post(
             "/chat",
@@ -251,14 +251,14 @@ class TestChatEndpoint:
 
     def test_chat_empty_response(self, test_client, mock_agent_manager):
         """Test fallback message for empty response."""
-        mock_agent_manager.get_agent_info = lambda aid: {
+        mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "agent-123",
             "user_id": "user123",
             "agent_type": "tutor",
             "agent_name": "youlab_user123_tutor",
             "created_at": None,
         }
-        mock_agent_manager.send_message = lambda aid, msg: ""
+        mock_agent_manager.send_message = lambda _aid, _msg: ""
 
         response = test_client.post(
             "/chat",

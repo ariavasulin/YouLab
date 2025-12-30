@@ -17,12 +17,12 @@ class TestGetLangfuse:
         with patch("letta_starter.server.tracing.settings") as mock_settings:
             mock_settings.langfuse_enabled = False
             mock_settings.langfuse_public_key = "pk_test"
-            mock_settings.langfuse_secret_key = "sk_test"
+            mock_settings.langfuse_secret_key = "sk_test"  # noqa: S105
 
             # Reset singleton
             import letta_starter.server.tracing as tracing_module
 
-            tracing_module._langfuse = None
+            tracing_module._langfuse = None  # noqa: SLF001
 
             result = get_langfuse()
 
@@ -38,7 +38,7 @@ class TestGetLangfuse:
             # Reset singleton
             import letta_starter.server.tracing as tracing_module
 
-            tracing_module._langfuse = None
+            tracing_module._langfuse = None  # noqa: SLF001
 
             result = get_langfuse()
 
@@ -46,25 +46,27 @@ class TestGetLangfuse:
 
     def test_creates_client_with_keys(self):
         """Test Langfuse client created with valid keys."""
-        with patch("letta_starter.server.tracing.settings") as mock_settings:
-            with patch("letta_starter.server.tracing.Langfuse") as mock_langfuse:
-                mock_settings.langfuse_enabled = True
-                mock_settings.langfuse_public_key = "pk_test"
-                mock_settings.langfuse_secret_key = "sk_test"
-                mock_settings.langfuse_host = "https://cloud.langfuse.com"
+        with (
+            patch("letta_starter.server.tracing.settings") as mock_settings,
+            patch("letta_starter.server.tracing.Langfuse") as mock_langfuse,
+        ):
+            mock_settings.langfuse_enabled = True
+            mock_settings.langfuse_public_key = "pk_test"
+            mock_settings.langfuse_secret_key = "sk_test"  # noqa: S105
+            mock_settings.langfuse_host = "https://cloud.langfuse.com"
 
-                # Reset singleton
-                import letta_starter.server.tracing as tracing_module
+            # Reset singleton
+            import letta_starter.server.tracing as tracing_module
 
-                tracing_module._langfuse = None
+            tracing_module._langfuse = None  # noqa: SLF001
 
-                get_langfuse()
+            get_langfuse()
 
-                mock_langfuse.assert_called_once_with(
-                    public_key="pk_test",
-                    secret_key="sk_test",
-                    host="https://cloud.langfuse.com",
-                )
+            mock_langfuse.assert_called_once_with(
+                public_key="pk_test",
+                secret_key="sk_test",  # noqa: S106
+                host="https://cloud.langfuse.com",
+            )
 
 
 class TestTraceChatContext:
@@ -118,13 +120,15 @@ class TestTraceChatContext:
         mock_langfuse = MagicMock()
         mock_langfuse.trace.side_effect = Exception("Connection error")
 
-        with patch("letta_starter.server.tracing.get_langfuse", return_value=mock_langfuse):
-            # Should not raise
-            with trace_chat(
+        # Should not raise
+        with (
+            patch("letta_starter.server.tracing.get_langfuse", return_value=mock_langfuse),
+            trace_chat(
                 user_id="user123",
                 agent_id="agent-123",
-            ) as ctx:
-                assert "trace_id" in ctx
+            ) as ctx,
+        ):
+            assert "trace_id" in ctx
 
 
 class TestTraceGeneration:

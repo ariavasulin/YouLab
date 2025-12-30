@@ -29,8 +29,8 @@ def mock_agent_manager(mock_letta_client):
     from letta_starter.server.agents import AgentManager
 
     manager = AgentManager.__new__(AgentManager)
-    manager._client = mock_letta_client
-    manager._cache = {}
+    manager._client = mock_letta_client  # noqa: SLF001
+    manager._cache = {}  # noqa: SLF001
     manager.letta_base_url = "http://localhost:8283"
     return manager
 
