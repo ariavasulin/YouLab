@@ -35,7 +35,7 @@ class AgentManager:
         """Generate agent name from user_id and type."""
         return f"youlab_{user_id}_{agent_type}"
 
-    def _agent_metadata(self, user_id: str, agent_type: str) -> dict:
+    def _agent_metadata(self, user_id: str, agent_type: str) -> dict[str, str]:
         """Generate agent metadata."""
         return {
             "youlab_user_id": user_id,
@@ -122,7 +122,7 @@ class AgentManager:
         )
         return agent.id
 
-    def get_agent_info(self, agent_id: str) -> dict | None:
+    def get_agent_info(self, agent_id: str) -> dict[str, Any] | None:
         """Get agent information by ID."""
         try:
             agent = self.client.get_agent(agent_id)
@@ -137,7 +137,7 @@ class AgentManager:
         except Exception:
             return None
 
-    def list_user_agents(self, user_id: str) -> list[dict]:
+    def list_user_agents(self, user_id: str) -> list[dict[str, Any]]:
         """List all agents for a user."""
         results = []
         agents = self.client.list_agents()

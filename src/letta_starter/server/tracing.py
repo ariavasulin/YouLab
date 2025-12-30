@@ -72,7 +72,7 @@ def trace_chat(
     try:
         yield context
     finally:
-        if trace:
+        if langfuse and trace:
             with contextlib.suppress(Exception):
                 langfuse.flush()
 

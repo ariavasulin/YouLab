@@ -13,20 +13,20 @@ class TestAgentManagerNaming:
     def test_agent_name_format(self):
         """Test agent name follows convention."""
         manager = AgentManager("http://localhost:8283")
-        name = manager._agent_name("user123", "tutor")
+        name = manager._agent_name("user123", "tutor")  # noqa: SLF001
         assert name == "youlab_user123_tutor"
 
     def test_agent_name_with_uuid(self):
         """Test agent name with UUID user_id."""
         manager = AgentManager("http://localhost:8283")
-        name = manager._agent_name("550e8400-e29b-41d4-a716-446655440000", "tutor")
+        name = manager._agent_name("550e8400-e29b-41d4-a716-446655440000", "tutor")  # noqa: SLF001
         assert name.startswith("youlab_")
         assert name.endswith("_tutor")
 
     def test_agent_metadata_format(self):
         """Test agent metadata structure."""
         manager = AgentManager("http://localhost:8283")
-        metadata = manager._agent_metadata("user123", "tutor")
+        metadata = manager._agent_metadata("user123", "tutor")  # noqa: SLF001
 
         assert metadata == {
             "youlab_user_id": "user123",
@@ -40,8 +40,8 @@ class TestAgentManagerCache:
     def test_cache_hit(self, mock_letta_client):
         """Test cache returns agent_id when present."""
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
-        manager._cache[("user123", "tutor")] = "cached-agent-id"
+        manager._client = mock_letta_client  # noqa: SLF001
+        manager._cache[("user123", "tutor")] = "cached-agent-id"  # noqa: SLF001
 
         result = manager.get_agent_id("user123", "tutor")
 
@@ -57,19 +57,19 @@ class TestAgentManagerCache:
         mock_letta_client.list_agents.return_value = [mock_agent]
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.get_agent_id("user123", "tutor")
 
         assert result == "letta-agent-id"
-        assert manager._cache[("user123", "tutor")] == "letta-agent-id"
+        assert manager._cache[("user123", "tutor")] == "letta-agent-id"  # noqa: SLF001
 
     def test_cache_miss_not_found(self, mock_letta_client):
         """Test None returned when agent doesn't exist."""
         mock_letta_client.list_agents.return_value = []
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.get_agent_id("user123", "tutor")
 
@@ -85,7 +85,7 @@ class TestAgentManagerCreate:
         mock_letta_client.create_agent.return_value = MagicMock(id="new-agent-id")
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.create_agent("user123", "tutor", "Alice")
 
@@ -100,7 +100,7 @@ class TestAgentManagerCreate:
         mock_letta_client.list_agents.return_value = [mock_agent]
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.create_agent("user123", "tutor")
 
@@ -112,7 +112,7 @@ class TestAgentManagerCreate:
         mock_letta_client.list_agents.return_value = []
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         with pytest.raises(ValueError, match="Unknown agent type"):
             manager.create_agent("user123", "nonexistent_type")
@@ -123,7 +123,7 @@ class TestAgentManagerCreate:
         mock_letta_client.create_agent.return_value = MagicMock(id="new-agent-id")
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         manager.create_agent("user123", "tutor", "Alice")
 
@@ -144,12 +144,12 @@ class TestAgentManagerRebuildCache:
         mock_letta_client.list_agents.return_value = []
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         count = await manager.rebuild_cache()
 
         assert count == 0
-        assert len(manager._cache) == 0
+        assert len(manager._cache) == 0  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_rebuild_cache_with_agents(self, mock_letta_client):
@@ -169,13 +169,13 @@ class TestAgentManagerRebuildCache:
         mock_letta_client.list_agents.return_value = mock_agents
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         count = await manager.rebuild_cache()
 
         assert count == 2
-        assert manager._cache[("user1", "tutor")] == "agent-1"
-        assert manager._cache[("user2", "tutor")] == "agent-2"
+        assert manager._cache[("user1", "tutor")] == "agent-1"  # noqa: SLF001
+        assert manager._cache[("user2", "tutor")] == "agent-2"  # noqa: SLF001
 
     @pytest.mark.asyncio
     async def test_rebuild_cache_ignores_non_youlab(self, mock_letta_client):
@@ -191,7 +191,7 @@ class TestAgentManagerRebuildCache:
         mock_letta_client.list_agents.return_value = mock_agents
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         count = await manager.rebuild_cache()
 
@@ -210,7 +210,7 @@ class TestAgentManagerSendMessage:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.send_message("agent-123", "Hello!")
 
@@ -226,7 +226,7 @@ class TestAgentManagerSendMessage:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.send_message("agent-123", "Hello!")
 
@@ -239,7 +239,7 @@ class TestAgentManagerSendMessage:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.send_message("agent-123", "Hello!")
 
@@ -254,7 +254,7 @@ class TestAgentManagerHealthCheck:
         mock_letta_client.list_agents.return_value = []
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.check_letta_connection()
 
@@ -265,7 +265,7 @@ class TestAgentManagerHealthCheck:
         mock_letta_client.list_agents.side_effect = Exception("Connection refused")
 
         manager = AgentManager("http://localhost:8283")
-        manager._client = mock_letta_client
+        manager._client = mock_letta_client  # noqa: SLF001
 
         result = manager.check_letta_connection()
 

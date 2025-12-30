@@ -56,19 +56,19 @@ class TestGetChatTitle:
     def test_no_chat_id(self):
         """Test returns None when no chat_id."""
         pipeline = Pipeline()
-        result = pipeline._get_chat_title(None)
+        result = pipeline._get_chat_title(None)  # noqa: SLF001
         assert result is None
 
     def test_local_chat_id(self):
         """Test returns None for local: prefixed IDs."""
         pipeline = Pipeline()
-        result = pipeline._get_chat_title("local:some-id")
+        result = pipeline._get_chat_title("local:some-id")  # noqa: SLF001
         assert result is None
 
     def test_openwebui_import_error(self):
         """Test handles ImportError gracefully."""
         pipeline = Pipeline()
-        result = pipeline._get_chat_title("some-chat-id")
+        result = pipeline._get_chat_title("some-chat-id")  # noqa: SLF001
         # Without OpenWebUI, should return None
         assert result is None
 
@@ -94,7 +94,7 @@ class TestEnsureAgentExists:
             mock_client.get.return_value = mock_response
 
             with mock_client:
-                result = pipeline._ensure_agent_exists(mock_client, "user123")
+                result = pipeline._ensure_agent_exists(mock_client, "user123")  # noqa: SLF001
 
             assert result == "existing-id"
 
@@ -121,7 +121,7 @@ class TestEnsureAgentExists:
             mock_client.post.return_value = mock_post_response
 
             with mock_client:
-                result = pipeline._ensure_agent_exists(mock_client, "user123", "Alice")
+                result = pipeline._ensure_agent_exists(mock_client, "user123", "Alice")  # noqa: SLF001
 
             assert result == "new-agent-id"
 
