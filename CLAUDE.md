@@ -16,13 +16,14 @@ OpenWebUI → Pipeline (embedded in OpenWebUI) → Letta Server → Claude API
 
 ```
 src/letta_starter/       # Python backend
-  agents/                # BaseAgent + factory functions + AgentRegistry
+  agents/                # BaseAgent + factory functions + AgentRegistry + templates
   memory/                # Memory blocks, rotation strategies, manager
   pipelines/             # OpenWebUI Pipe integration
+  server/                # FastAPI HTTP service (agent management, chat endpoints)
   observability/         # Logging, metrics, tracing (Langfuse)
   config/                # Pydantic settings from env
   main.py                # CLI entry point
-tests/                   # Pytest suite
+tests/                   # Pytest suite (including tests/test_server/)
 ```
 
 ## Commands
@@ -34,6 +35,7 @@ make setup
 # Run the CLI
 uv run letta-starter             # Interactive mode (requires letta server)
 uv run letta-starter --agent X   # Use specific agent
+uv run letta-server              # Start HTTP service (requires letta server)
 
 # Verification (run before committing)
 make verify                      # Full: lint + typecheck + tests
@@ -52,6 +54,7 @@ Pre-commit hooks run `make verify` automatically - commits are blocked if checks
 **Claude**: Run `make lint-fix` frequently during development and after every file edit to catch issues early.
 
 **Claude**: Use `make test-agent` instead of `make test` for faster feedback with minimal context usage. It:
+
 - Stops on first failure (`-x`)
 - Shows only failure details, not passing tests
 - Omits coverage report
@@ -66,30 +69,32 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/memory/manager.py` - Memory lifecycle orchestration
 - `src/letta_starter/agents/base.py` - BaseAgent with integrated memory + tracing
 - `src/letta_starter/agents/default.py` - Factory functions + AgentRegistry
+- `src/letta_starter/agents/templates.py` - AgentTemplate + TUTOR_TEMPLATE for essay coaching
+- `src/letta_starter/server/main.py` - FastAPI app with /health, /agents, /chat endpoints
+- `src/letta_starter/server/agents.py` - AgentManager for per-user Letta agents
 - `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
 - `src/letta_starter/config/settings.py` - Pydantic settings from environment
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
 
-## Planned (Not Yet Implemented)
+## Roadmap
 
-Target architecture adds per-student agents, Honcho integration, and curriculum-driven tutoring:
+Target architecture adds Honcho integration and curriculum-driven tutoring:
 
 ```
 OpenWebUI (Pipe) → LettaStarter HTTP Service → Letta Server → Claude API
                                              → Honcho (ToM layer)
 ```
 
-**Roadmap** (see `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md`):
+**Full plan**: `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md`
 
-1. **HTTP Service** — FastAPI server (`server.py`) so Pipe stays thin
-   - Detailed plan: `thoughts/shared/plans/2025-12-29-phase-1-http-service.md`
-2. **User Identity & Routing** — Per-student Letta agents, not shared
-3. **Honcho Integration** — Message persistence, dialectic API for student insights
-4. **Thread Context** — Parse chat titles to update agent context per module/lesson
-5. **Curriculum Parser** — Load course definitions from markdown, hot-reload
-6. **Background Worker** — Query Honcho dialectic on idle, update agent memory
-7. **Student Onboarding** — First-time setup flow, profile initialization
+- [X] **Phase 1: HTTP Service** — FastAPI server with agent management (`server/`)
+- [ ] **Phase 2: User Identity & Routing** — Per-student Letta agents via Pipe integration
+- [ ] **Phase 3: Honcho Integration** — Message persistence, dialectic API for student insights
+- [ ] **Phase 4: Thread Context** — Parse chat titles to update agent context per module/lesson
+- [ ] **Phase 5: Curriculum Parser** — Load course definitions from markdown, hot-reload
+- [ ] **Phase 6: Background Worker** — Query Honcho dialectic on idle, update agent memory
+- [ ] **Phase 7: Student Onboarding** — First-time setup flow, profile initialization
 
 ## Thoughts Directory
 
@@ -108,8 +113,6 @@ thoughts/
 **Important**: Never write to `thoughts/searchable/` — it gets wiped on every sync. Write to `thoughts/shared/` instead.
 
 **Context doc**: `thoughts/shared/youlab-project-context.md` — Full architecture decisions, open questions, and next steps.
-
-**Implementation plan**: `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md` — 7-phase plan for building the technical foundation (not yet implemented).
 
 ## Linear
 

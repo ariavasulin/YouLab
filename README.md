@@ -138,7 +138,8 @@ agent = BaseAgent(
 src/letta_starter/
 ├── agents/           # Agent definitions
 │   ├── base.py       # BaseAgent with observability
-│   └── default.py    # Pre-configured agents
+│   ├── default.py    # Pre-configured agents
+│   └── templates.py  # AgentTemplate for creating tutor agents
 ├── memory/           # Memory management (core focus)
 │   ├── blocks.py     # PersonaBlock, HumanBlock schemas
 │   ├── manager.py    # Memory lifecycle manager
@@ -149,6 +150,11 @@ src/letta_starter/
 │   └── tracing.py    # LLM call tracing
 ├── pipelines/        # Open WebUI integration
 │   └── letta_pipe.py # Pipeline class
+├── server/           # HTTP service
+│   ├── main.py       # FastAPI app
+│   ├── agents.py     # AgentManager for per-user agents
+│   ├── schemas.py    # Request/response schemas
+│   └── tracing.py    # Langfuse integration
 ├── config/           # Configuration
 │   └── settings.py   # Pydantic settings
 └── main.py           # CLI entry point
@@ -262,7 +268,10 @@ uv run pytest
 uv run ruff check src/
 
 # Type check
-uv run mypy src/
+uv run basedpyright src/
+
+# Run HTTP server
+uv run letta-server
 ```
 
 ## License
