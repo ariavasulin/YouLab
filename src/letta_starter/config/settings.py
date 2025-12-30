@@ -101,3 +101,53 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
+
+
+class ServiceSettings(BaseSettings):
+    """Settings for the HTTP service."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="YOULAB_SERVICE_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    host: str = Field(
+        default="127.0.0.1",
+        description="Host to bind the service to",
+    )
+    port: int = Field(
+        default=8100,
+        description="Port to bind the service to",
+    )
+    api_key: str | None = Field(
+        default=None,
+        description="Optional API key for authentication",
+    )
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level",
+    )
+
+    # Letta connection
+    letta_base_url: str = Field(
+        default="http://localhost:8283",
+        description="URL of the Letta server",
+    )
+
+    langfuse_public_key: str | None = Field(
+        default=None,
+        description="Langfuse public key",
+    )
+    langfuse_secret_key: str | None = Field(
+        default=None,
+        description="Langfuse secret key",
+    )
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        description="Langfuse host URL",
+    )
+    langfuse_enabled: bool = Field(
+        default=True,
+        description="Enable Langfuse tracing",
+    )
