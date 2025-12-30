@@ -157,6 +157,7 @@ class Pipeline:
 
         Returns:
             Agent response as string or generator for streaming
+
         """
         if not self.client or not self.agent_id:
             return "Error: Letta client not initialized. Check pipeline configuration."
@@ -178,7 +179,7 @@ class Pipeline:
             return response_text if response_text else "No response from agent."
 
         except Exception as e:
-            error_msg = f"Error communicating with Letta: {str(e)}"
+            error_msg = f"Error communicating with Letta: {e!s}"
             if self.valves.ENABLE_LOGGING:
                 print(f"ERROR: {error_msg}")
             return error_msg

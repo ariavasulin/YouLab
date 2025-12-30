@@ -17,8 +17,9 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
     "ruff>=0.4.0",
-    "mypy>=1.10.0",
+    "basedpyright>=1.22.0",
     "pre-commit>=3.7",
 ]
 observability = [
@@ -40,25 +41,131 @@ packages = ["src/letta_starter"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = ["OpenWebUI", "hack"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+select = ["ALL"]
+ignore = [
+    # Formatting (handled by ruff format)
+    "W191",   # tab-indentation
+    "E111",   # indentation-with-invalid-multiple
+    "E114",   # indentation-not-multiple-of-four-comment
+    "E117",   # over-indented
+    "E501",   # line-too-long (handled by formatter)
+    "D206",   # indent-with-spaces
+    "D300",   # triple-single-quotes
+    "Q000",   # bad-quotes-inline-string
+    "Q001",   # bad-quotes-multiline-string
+    "Q002",   # bad-quotes-docstring
+    "Q003",   # avoidable-escaped-quote
+    "COM812", # missing-trailing-comma
+    "COM819", # prohibited-trailing-comma
+    "ISC001", # single-line-implicit-string-concatenation
+    "ISC002", # multi-line-implicit-string-concatenation
+
+    # Docstrings (too strict for this project)
+    "D100",   # undocumented-public-module
+    "D101",   # undocumented-public-class
+    "D102",   # undocumented-public-method
+    "D103",   # undocumented-public-function
+    "D104",   # undocumented-public-package
+    "D105",   # undocumented-magic-method
+    "D107",   # undocumented-public-init
+    "D203",   # one-blank-line-before-class (conflicts with D211)
+    "D212",   # multi-line-summary-first-line (conflicts with D213)
+
+    # Too opinionated
+    "ANN401", # dynamically-typed-expressions (Any is intentional for letta)
+    "TD002",  # missing-todo-author
+    "TD003",  # missing-todo-link
+    "FIX002", # line-contains-todo
+
+    # CLI application patterns
+    "T201",   # print (intentional for CLI output)
+    "BLE001", # blind-except (sometimes appropriate for error recovery)
+    "TRY003", # long-exception-message (simple messages are fine)
+    "TRY300", # try-consider-else (not always clearer)
+    "TRY400", # error-instead-of-exception (structlog patterns)
+    "EM101",  # raw-string-in-exception (simple messages are fine)
+    "EM102",  # f-string-in-exception (simple messages are fine)
+
+    # Function design
+    "PLR0913", # too-many-arguments (config objects need params)
+    "PLR0912", # too-many-branches (complex functions exist)
+    "PLR0915", # too-many-statements (complex functions exist)
+    "C901",    # complex-structure (complex functions exist)
+    "FBT001",  # boolean-positional-arg (sometimes clearest API)
+    "FBT002",  # boolean-default-positional-arg (sometimes clearest API)
+
+    # Import patterns
+    "PLC0415", # import-outside-top-level (deferred imports for circular deps)
+
+    # Annotation patterns
+    "ANN204",  # missing-return-type-special-method (__init__ doesn't need -> None)
+
+    # Other
+    "DTZ005",  # call-datetime-now-without-tzinfo (local timestamps are fine)
+    "DTZ006",  # call-datetime-fromtimestamp-without-tzinfo (local timestamps are fine)
+    "RUF012",  # mutable-class-default (ClassVar annotation too strict)
+    "D401",    # non-imperative-mood (docstring mood too strict)
+    "PLR2004", # magic-value-comparison (clear in context)
+    "ARG001",  # unused-function-argument (required for interface compliance)
+    "ARG002",  # unused-method-argument (required for interface compliance)
+    "PLW0603", # global-statement (singleton pattern is intentional)
+]
 
 [tool.ruff.lint.isort]
 known-first-party = ["letta_starter"]
 
-[tool.mypy]
-python_version = "3.11"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101", # assert (allowed in tests)
+    "D",    # docstrings (not required in tests)
+    "ANN",  # annotations (not required in tests)
+]
 
-[[tool.mypy.overrides]]
-module = ["letta.*", "langfuse.*"]
-ignore_missing_imports = true
+[tool.basedpyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+include = ["src/letta_starter", "tests"]
+exclude = [".venv", "__pycache__", "OpenWebUI"]
+# Ignore missing imports/stubs for external libraries (letta, langfuse)
+reportMissingImports = false
+reportMissingTypeStubs = false
+# Allow unknown types from external libraries without type stubs
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportAttributeAccessIssue = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = [
+    "--cov=src/letta_starter",
+    "--cov-branch",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+source = ["src/letta_starter"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@abstractmethod",
+]
+precision = 2
+skip_empty = true

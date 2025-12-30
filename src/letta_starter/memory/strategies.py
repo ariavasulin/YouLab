@@ -73,6 +73,7 @@ class ContextStrategy(Protocol):
 
         Returns:
             Compressed content
+
         """
         ...
 

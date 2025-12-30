@@ -61,6 +61,7 @@ class Tracer:
         Args:
             langfuse_client: Optional Langfuse client for external tracing
             service_name: Service name for trace metadata
+
         """
         self.langfuse = langfuse_client
         self.service_name = service_name
@@ -75,6 +76,7 @@ class Tracer:
         Args:
             session_id: Unique session identifier
             user_id: Optional user identifier
+
         """
         self._current_session_id = session_id
 
@@ -151,6 +153,7 @@ class Tracer:
 
         Yields:
             LLMCallMetrics object to populate with results
+
         """
         metrics = LLMCallMetrics(
             model=model,
@@ -239,6 +242,7 @@ class Tracer:
             block_type: Memory block type (persona, human, archival)
             chars: Characters involved
             agent_id: Agent ID
+
         """
         self.logger.info(
             "memory_operation_traced",
@@ -293,6 +297,7 @@ def init_tracer(
 
     Returns:
         Configured Tracer instance
+
     """
     global _tracer
 

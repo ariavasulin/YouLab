@@ -142,6 +142,7 @@ class MetricsCollector:
 
         Returns:
             New SessionMetrics instance
+
         """
         session = SessionMetrics(session_id=session_id)
         self.sessions[session_id] = session
@@ -159,6 +160,7 @@ class MetricsCollector:
 
         Returns:
             The ended session metrics
+
         """
         session = self.sessions.get(session_id) if session_id else self.current_session
 
@@ -199,6 +201,7 @@ class MetricsCollector:
 
         Returns:
             The recorded call
+
         """
         cost = self._estimate_cost(model, prompt_tokens, completion_tokens)
 

@@ -44,6 +44,7 @@ class BaseAgent:
             client: Letta client instance
             tracer: Optional tracer (default: global tracer)
             max_memory_chars: Maximum chars per memory block
+
         """
         self.name = name
         self.client = client
@@ -93,6 +94,7 @@ class BaseAgent:
 
         Returns:
             Agent response text
+
         """
         self.logger.debug(
             "message_received",
@@ -171,6 +173,7 @@ class BaseAgent:
         Args:
             task: New task to set
             note: Context note to add
+
         """
         if task:
             self.memory.set_task(task)
@@ -184,6 +187,7 @@ class BaseAgent:
         Args:
             preference: A user preference to remember
             fact: A fact about the user to remember
+
         """
         if preference:
             self.memory.learn_preference(preference)
@@ -204,6 +208,7 @@ class BaseAgent:
 
         Returns:
             List of matching archival entries
+
         """
         return self.memory.search_archival(query, limit)
 

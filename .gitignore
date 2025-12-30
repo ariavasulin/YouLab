@@ -44,6 +44,7 @@ uv.lock
 
 # Testing
 .coverage
+coverage.xml
 .pytest_cache/
 htmlcov/
 .tox/
@@ -53,6 +54,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+.basedpyright/
 
 # Logs
 logs/

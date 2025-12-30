@@ -17,11 +17,11 @@ __version__ = "0.1.0"
 
 __all__ = [
     "BaseAgent",
-    "create_default_agent",
-    "Settings",
-    "PersonaBlock",
     "HumanBlock",
     "MemoryManager",
-    "configure_logging",
+    "PersonaBlock",
+    "Settings",
     "Tracer",
+    "configure_logging",
+    "create_default_agent",
 ]

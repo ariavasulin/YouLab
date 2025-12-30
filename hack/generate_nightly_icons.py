@@ -6,9 +6,9 @@
 # ]
 # ///
 
-import os
 import subprocess
 from pathlib import Path
+
 from PIL import Image
 
 # Get paths relative to script location
@@ -23,7 +23,7 @@ def create_rounded_icon(source_path, output_path, size):
     img = Image.open(source_path)
     img = img.convert("RGBA")
     img = img.resize((size, size), Image.Resampling.LANCZOS)
-    
+
     # Save the result directly - preserves transparency and existing rounded corners
     img.save(output_path, "PNG")
     print(f"Created: {output_path} ({size}x{size})")
@@ -73,15 +73,21 @@ def main():
 
     # Convert to .icns
     print("\nConverting to .icns format...")
-    subprocess.run(["iconutil", "-c", "icns", str(iconset_dir), "-o", str(ICON_DIR / "icon.icns")])
+    subprocess.run(
+        ["iconutil", "-c", "icns", str(iconset_dir), "-o", str(ICON_DIR / "icon.icns")], check=False
+    )
 
     # Generate Windows .ico file
     print("\nGenerating Windows .ico file...")
     img = Image.open(str(SOURCE_ICON))
-    img.save(str(ICON_DIR / "icon.ico"), format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    img.save(
+        str(ICON_DIR / "icon.ico"),
+        format="ICO",
+        sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    )
 
     # Cleanup
-    subprocess.run(["rm", "-rf", str(iconset_dir)])
+    subprocess.run(["rm", "-rf", str(iconset_dir)], check=False)
 
     print("\nDone! All nightly icons have been generated.")
     print(f"Output directory: {ICON_DIR}")

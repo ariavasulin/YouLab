@@ -50,6 +50,7 @@ class MemoryManager:
             agent_id: ID of the agent to manage
             max_chars: Maximum characters per memory block
             strategy: Context management strategy (default: AdaptiveRotation)
+
         """
         self.client = client
         self.agent_id = agent_id
@@ -118,6 +119,7 @@ class MemoryManager:
 
         Args:
             persona: New persona block
+
         """
         self._persona_block = persona
         memory_str = persona.to_memory_string(self.max_chars)
@@ -141,6 +143,7 @@ class MemoryManager:
 
         Args:
             human: New human block
+
         """
         self._human_block = human
         memory_str = human.to_memory_string(self.max_chars)
@@ -177,6 +180,7 @@ class MemoryManager:
         Args:
             task: Task description
             context: Optional additional context
+
         """
         human = self.get_human_block()
         human.set_task(task)
@@ -190,6 +194,7 @@ class MemoryManager:
 
         Args:
             archive: Whether to archive the task context first
+
         """
         human = self.get_human_block()
 
@@ -273,6 +278,7 @@ Context: {"; ".join(human.context_notes[-5:])}"""
 
         Returns:
             List of matching archival entries
+
         """
         try:
             results = self.client.get_archival_memory(
