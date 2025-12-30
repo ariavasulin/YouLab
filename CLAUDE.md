@@ -37,28 +37,23 @@ uv run letta-starter             # Interactive mode (requires letta server)
 uv run letta-starter --agent X   # Use specific agent
 uv run letta-server              # Start HTTP service (requires letta server)
 
-# Verification (run before committing)
-make verify                      # Full: lint + typecheck + tests
-make check                       # Quick: lint + typecheck only
+# Verification (agent-optimized, minimal output)
+make verify-agent                # Full: lint + typecheck + tests
+make check-agent                 # Quick: lint + typecheck only
+make test-agent                  # Pytest only (no coverage)
 
 # Individual tools
-make lint                        # Ruff check + format check
 make lint-fix                    # Auto-fix lint issues
-make typecheck                   # BasedPyright
-make test                        # Pytest (with coverage)
-make test-agent                  # Pytest (agent-optimized, minimal output)
 ```
 
 Pre-commit hooks run `make verify` automatically - commits are blocked if checks fail.
 
 **Claude**: Run `make lint-fix` frequently during development and after every file edit to catch issues early.
 
-**Claude**: Use `make test-agent` instead of `make test` for faster feedback with minimal context usage. It:
-
-- Stops on first failure (`-x`)
-- Shows only failure details, not passing tests
-- Omits coverage report
-- Uses single-line success output: `✓ Tests (N tests)`
+**Claude**: Always use the `-agent` variants for verification. They implement HumanLayer's "swallow success, show failure" pattern:
+- Minimal output on success: `✓ Ruff check`, `✓ Typecheck`, `✓ Tests (N tests)`
+- Full output only on failure
+- Fail-fast (`-x`) for tests - one bug at a time
 
 Requires Letta server: `pip install letta && letta server`
 
