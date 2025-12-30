@@ -11,6 +11,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+# Memory string parsing constants
+PARSED_PARTS_WITH_ROLE = 2  # Expected parts when role is included (name, role)
+
 
 class SessionState(str, Enum):
     """Current state of the agent session."""
@@ -107,7 +110,7 @@ class PersonaBlock(BaseModel):
                 parts = line.replace("[IDENTITY]", "").strip().split("|")
                 if len(parts) >= 1:
                     data["name"] = parts[0].strip()
-                if len(parts) >= 2:
+                if len(parts) >= PARSED_PARTS_WITH_ROLE:
                     data["role"] = parts[1].strip()
             elif line.startswith("[CAPABILITIES]"):
                 caps = line.replace("[CAPABILITIES]", "").strip()
@@ -119,7 +122,7 @@ class PersonaBlock(BaseModel):
                 style = line.replace("[STYLE]", "").strip().split(",")
                 if len(style) >= 1:
                     data["tone"] = style[0].strip()
-                if len(style) >= 2:
+                if len(style) >= PARSED_PARTS_WITH_ROLE:
                     data["verbosity"] = style[1].strip()
             elif line.startswith("[CONSTRAINTS]"):
                 const = line.replace("[CONSTRAINTS]", "").strip()
@@ -250,7 +253,7 @@ class HumanBlock(BaseModel):
                     name = parts[0].strip()
                     if name != "Unknown":
                         data["name"] = name
-                if len(parts) >= 2:
+                if len(parts) >= PARSED_PARTS_WITH_ROLE:
                     data["role"] = parts[1].strip()
             elif line.startswith("[TASK]"):
                 data["current_task"] = line.replace("[TASK]", "").strip()
