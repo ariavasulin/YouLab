@@ -1,7 +1,7 @@
 # Makefile for YouLab
 # All commands use uv for dependency management
 
-.PHONY: help setup lint lint-fix typecheck test check verify coverage coverage-html clean
+.PHONY: help setup lint lint-fix typecheck test test-agent check verify coverage coverage-html clean
 
 help:
 	@echo "YouLab Development Commands"
@@ -11,6 +11,7 @@ help:
 	@echo "  lint-fix     Run ruff with auto-fix"
 	@echo "  typecheck    Run basedpyright type checker"
 	@echo "  test         Run pytest (with coverage)"
+	@echo "  test-agent   Run tests with agent-optimized output"
 	@echo "  check        Run lint + typecheck (no tests)"
 	@echo "  verify       Run lint + typecheck + tests (full verification)"
 	@echo "  coverage     Run tests with coverage report"
@@ -37,6 +38,9 @@ typecheck:
 
 test:
 	uv run pytest
+
+test-agent:
+	@./hack/test-agent.sh
 
 check: lint typecheck
 
