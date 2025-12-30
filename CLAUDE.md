@@ -42,7 +42,7 @@ make check                       # Quick: lint + typecheck only
 # Individual tools
 make lint                        # Ruff check + format check
 make lint-fix                    # Auto-fix lint issues
-make typecheck                   # Mypy
+make typecheck                   # BasedPyright
 make test                        # Pytest
 ```
 
