@@ -74,6 +74,7 @@ OpenWebUI (Pipe) → LettaStarter HTTP Service → Letta Server → Claude API
 **Roadmap** (see `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md`):
 
 1. **HTTP Service** — FastAPI server (`server.py`) so Pipe stays thin
+   - Detailed plan: `thoughts/shared/plans/2025-12-29-phase-1-http-service.md`
 2. **User Identity & Routing** — Per-student Letta agents, not shared
 3. **Honcho Integration** — Message persistence, dialectic API for student insights
 4. **Thread Context** — Parse chat titles to update agent context per module/lesson
