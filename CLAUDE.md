@@ -43,10 +43,19 @@ make check                       # Quick: lint + typecheck only
 make lint                        # Ruff check + format check
 make lint-fix                    # Auto-fix lint issues
 make typecheck                   # BasedPyright
-make test                        # Pytest
+make test                        # Pytest (with coverage)
+make test-agent                  # Pytest (agent-optimized, minimal output)
 ```
 
 Pre-commit hooks run `make verify` automatically - commits are blocked if checks fail.
+
+**Claude**: Run `make lint-fix` frequently during development and after every file edit to catch issues early.
+
+**Claude**: Use `make test-agent` instead of `make test` for faster feedback with minimal context usage. It:
+- Stops on first failure (`-x`)
+- Shows only failure details, not passing tests
+- Omits coverage report
+- Uses single-line success output: `✓ Tests (N tests)`
 
 Requires Letta server: `pip install letta && letta server`
 
