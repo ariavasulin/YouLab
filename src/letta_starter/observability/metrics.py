@@ -8,6 +8,7 @@ or used for monitoring without external dependencies.
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import ClassVar
 
 import structlog
 
@@ -116,7 +117,7 @@ class MetricsCollector:
     """
 
     # Approximate cost per 1K tokens by model (as of late 2024)
-    MODEL_COSTS: dict[str, dict[str, float]] = {
+    MODEL_COSTS: ClassVar[dict[str, dict[str, float]]] = {
         "gpt-4": {"input": 0.03, "output": 0.06},
         "gpt-4-turbo": {"input": 0.01, "output": 0.03},
         "gpt-4o": {"input": 0.005, "output": 0.015},

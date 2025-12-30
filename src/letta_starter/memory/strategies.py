@@ -8,6 +8,12 @@ core memory to archival memory, optimizing the context window usage.
 from dataclasses import dataclass
 from typing import Protocol
 
+# Adaptive rotation strategy constants
+ROTATION_HISTORY_MIN_SIZE = 5  # Minimum rotations before adapting threshold
+ROTATION_HISTORY_MAX_SIZE = 20  # Maximum rotation history to keep
+ROTATION_INTERVAL_TOO_FAST = 0.5  # Rotating too often if avg < this
+ROTATION_INTERVAL_TOO_SLOW = 0.9  # Rarely rotating if avg > this
+
 
 @dataclass
 class ContextMetrics:
@@ -155,10 +161,9 @@ class AdaptiveRotation:
     """
 
     base_threshold: float = 0.8
-    recent_rotations: list[float] = []
 
     def __init__(self) -> None:
-        self.recent_rotations = []
+        self.recent_rotations: list[float] = []
 
     def should_rotate(self, metrics: ContextMetrics) -> bool:
         """
@@ -171,11 +176,13 @@ class AdaptiveRotation:
         threshold = self.base_threshold
 
         # Adjust based on recent rotation history
-        if len(self.recent_rotations) >= 5:
-            avg_interval = sum(self.recent_rotations[-5:]) / 5
-            if avg_interval < 0.5:  # Rotating too often
+        if len(self.recent_rotations) >= ROTATION_HISTORY_MIN_SIZE:
+            avg_interval = (
+                sum(self.recent_rotations[-ROTATION_HISTORY_MIN_SIZE:]) / ROTATION_HISTORY_MIN_SIZE
+            )
+            if avg_interval < ROTATION_INTERVAL_TOO_FAST:
                 threshold = min(0.95, threshold + 0.05)
-            elif avg_interval > 0.9:  # Rarely rotating
+            elif avg_interval > ROTATION_INTERVAL_TOO_SLOW:
                 threshold = max(0.6, threshold - 0.05)
 
         return metrics.human_usage > threshold
@@ -183,9 +190,8 @@ class AdaptiveRotation:
     def record_rotation(self, usage_at_rotation: float) -> None:
         """Record a rotation event for adaptive learning."""
         self.recent_rotations.append(usage_at_rotation)
-        # Keep only last 20 rotations
-        if len(self.recent_rotations) > 20:
-            self.recent_rotations = self.recent_rotations[-20:]
+        if len(self.recent_rotations) > ROTATION_HISTORY_MAX_SIZE:
+            self.recent_rotations = self.recent_rotations[-ROTATION_HISTORY_MAX_SIZE:]
 
     def compress(self, content: str, target_chars: int) -> str:
         """Balanced compression preserving key information."""

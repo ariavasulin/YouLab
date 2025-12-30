@@ -106,9 +106,7 @@ ignore = [
     # Other
     "DTZ005",  # call-datetime-now-without-tzinfo (local timestamps are fine)
     "DTZ006",  # call-datetime-fromtimestamp-without-tzinfo (local timestamps are fine)
-    "RUF012",  # mutable-class-default (ClassVar annotation too strict)
     "D401",    # non-imperative-mood (docstring mood too strict)
-    "PLR2004", # magic-value-comparison (clear in context)
     "ARG001",  # unused-function-argument (required for interface compliance)
     "ARG002",  # unused-method-argument (required for interface compliance)
     "PLW0603", # global-statement (singleton pattern is intentional)
@@ -119,9 +117,10 @@ known-first-party = ["letta_starter"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
-    "S101", # assert (allowed in tests)
-    "D",    # docstrings (not required in tests)
-    "ANN",  # annotations (not required in tests)
+    "S101",    # assert (allowed in tests)
+    "D",       # docstrings (not required in tests)
+    "ANN",     # annotations (not required in tests)
+    "PLR2004", # magic-value-comparison (expected values in assertions)
 ]
 
 [tool.basedpyright]
