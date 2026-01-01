@@ -138,11 +138,12 @@ class TestListAgentsEndpoint:
 
     def test_list_all_agents(self, test_client, mock_agent_manager):
         """Test listing all agents."""
-        mock_agent_manager.client = type(
-            "Client",
+        # Create mock with new resource-based API: client.agents.list()
+        mock_agents_resource = type(
+            "AgentsResource",
             (),
             {
-                "list_agents": lambda _self: [
+                "list": lambda _self: [
                     type(
                         "Agent",
                         (),
@@ -157,6 +158,11 @@ class TestListAgentsEndpoint:
                     )(),
                 ]
             },
+        )()
+        mock_agent_manager.client = type(
+            "Client",
+            (),
+            {"agents": mock_agents_resource},
         )()
 
         response = test_client.get("/agents")
@@ -271,3 +277,102 @@ class TestChatEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["response"] == "No response from agent."
+
+
+class TestChatStreamEndpoint:
+    """Tests for POST /chat/stream endpoint."""
+
+    def test_stream_returns_sse(self, test_client, mock_agent_manager):
+        """Streaming endpoint returns SSE content type."""
+
+        def mock_stream(*args, **kwargs):
+            yield 'data: {"type": "message", "content": "Hello"}\n\n'
+            yield 'data: {"type": "done"}\n\n'
+
+        mock_agent_manager.stream_message = mock_stream
+        mock_agent_manager.get_agent_info = lambda agent_id: {"agent_id": agent_id}
+
+        response = test_client.post(
+            "/chat/stream",
+            json={"agent_id": "agent-123", "message": "Hello"},
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+        assert response.headers["cache-control"] == "no-cache"
+
+    def test_stream_content(self, test_client, mock_agent_manager):
+        """Streaming endpoint yields SSE events."""
+        events = [
+            'data: {"type": "status", "content": "Thinking..."}\n\n',
+            'data: {"type": "message", "content": "Hello!"}\n\n',
+            'data: {"type": "done"}\n\n',
+        ]
+
+        def mock_stream(*args, **kwargs):
+            yield from events
+
+        mock_agent_manager.stream_message = mock_stream
+        mock_agent_manager.get_agent_info = lambda agent_id: {"agent_id": agent_id}
+
+        response = test_client.post(
+            "/chat/stream",
+            json={"agent_id": "agent-123", "message": "Hello"},
+        )
+
+        content = response.text
+        assert 'data: {"type": "status"' in content
+        assert 'data: {"type": "message"' in content
+        assert 'data: {"type": "done"' in content
+
+    def test_stream_agent_not_found(self, test_client, mock_agent_manager):
+        """Streaming endpoint returns 404 for unknown agent."""
+        mock_agent_manager.get_agent_info = lambda _aid: None
+
+        response = test_client.post(
+            "/chat/stream",
+            json={"agent_id": "unknown-agent", "message": "Hello"},
+        )
+
+        assert response.status_code == 404
+        assert "Agent not found" in response.json()["detail"]
+
+    def test_stream_missing_agent_id(self, test_client):
+        """Streaming endpoint requires agent_id."""
+        response = test_client.post(
+            "/chat/stream",
+            json={"message": "Hello"},
+        )
+
+        assert response.status_code == 422
+
+    def test_stream_missing_message(self, test_client):
+        """Streaming endpoint requires message."""
+        response = test_client.post(
+            "/chat/stream",
+            json={"agent_id": "agent-123"},
+        )
+
+        assert response.status_code == 422
+
+    def test_stream_with_optional_fields(self, test_client, mock_agent_manager):
+        """Streaming endpoint accepts optional fields."""
+
+        def mock_stream(*args, **kwargs):
+            yield 'data: {"type": "done"}\n\n'
+
+        mock_agent_manager.stream_message = mock_stream
+        mock_agent_manager.get_agent_info = lambda agent_id: {"agent_id": agent_id}
+
+        response = test_client.post(
+            "/chat/stream",
+            json={
+                "agent_id": "agent-123",
+                "message": "Hello",
+                "chat_id": "chat-456",
+                "chat_title": "My Chat",
+                "enable_thinking": False,
+            },
+        )
+
+        assert response.status_code == 200

@@ -1,5 +1,7 @@
 """Agent management for the HTTP service."""
 
+import json
+from collections.abc import Iterator
 from typing import Any
 
 import structlog
@@ -44,7 +46,7 @@ class AgentManager:
 
     async def rebuild_cache(self) -> int:
         """Rebuild cache from Letta on startup. Returns count of agents found."""
-        agents = self.client.list_agents()
+        agents = self.client.agents.list()
         count = 0
         for agent in agents:
             if agent.name and agent.name.startswith("youlab_"):
@@ -67,7 +69,7 @@ class AgentManager:
 
         # Lookup in Letta by name
         agent_name = self._agent_name(user_id, agent_type)
-        agents = self.client.list_agents()
+        agents = self.client.agents.list()
         for agent in agents:
             if agent.name == agent_name:
                 self._cache[cache_key] = agent.id
@@ -103,12 +105,14 @@ class AgentManager:
             human_block = template.human.model_copy()
             human_block.name = user_name
 
-        agent = self.client.create_agent(
+        agent = self.client.agents.create(
             name=agent_name,
-            memory={
-                "persona": template.persona.to_memory_string(),
-                "human": human_block.to_memory_string(),
-            },
+            model="openai/gpt-4o-mini",  # OpenAI model for responses
+            embedding="openai/text-embedding-ada-002",  # OpenAI embedding model
+            memory_blocks=[
+                {"label": "persona", "value": template.persona.to_memory_string()},
+                {"label": "human", "value": human_block.to_memory_string()},
+            ],
             metadata=metadata,
         )
 
@@ -125,7 +129,7 @@ class AgentManager:
     def get_agent_info(self, agent_id: str) -> dict[str, Any] | None:
         """Get agent information by ID."""
         try:
-            agent = self.client.get_agent(agent_id)
+            agent = self.client.agents.retrieve(agent_id)
             meta = agent.metadata or {}
             return {
                 "agent_id": agent.id,
@@ -140,7 +144,7 @@ class AgentManager:
     def list_user_agents(self, user_id: str) -> list[dict[str, Any]]:
         """List all agents for a user."""
         results = []
-        agents = self.client.list_agents()
+        agents = self.client.agents.list()
         for agent in agents:
             meta = agent.metadata or {}
             if meta.get("youlab_user_id") == user_id:
@@ -157,12 +161,127 @@ class AgentManager:
 
     def send_message(self, agent_id: str, message: str) -> str:
         """Send a message to an agent. Returns response text."""
-        response = self.client.send_message(
+        response = self.client.agents.messages.create(
             agent_id=agent_id,
-            message=message,
-            role="user",
+            input=message,
         )
         return self._extract_response(response)
+
+    def stream_message(
+        self,
+        agent_id: str,
+        message: str,
+        enable_thinking: bool = True,
+    ) -> Iterator[str]:
+        """
+        Stream a message to an agent. Yields SSE-formatted events.
+
+        Uses the Letta SDK's streaming API: client.agents.messages.stream()
+        """
+        try:
+            # Note: enable_thinking is typed as `str | Omit` in the SDK.
+            # The docstring says "If set to True, enables reasoning" but the
+            # actual expected value format is unclear. Using string "true"/"false".
+            # If this doesn't work, try passing the boolean directly.
+            with self.client.agents.messages.stream(
+                agent_id=agent_id,
+                input=message,
+                enable_thinking="true" if enable_thinking else "false",
+                stream_tokens=False,
+                include_pings=True,
+            ) as stream:
+                for chunk in stream:
+                    event = self._chunk_to_sse_event(chunk)
+                    if event:
+                        yield event
+        except Exception as e:
+            log.exception("stream_message_failed", agent_id=agent_id, error=str(e))
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    def _chunk_to_sse_event(self, chunk: Any) -> str | None:
+        """
+        Convert Letta streaming chunk to SSE event string.
+
+        Handles these message types from LettaStreamingResponse:
+        - reasoning_message: Agent's internal thinking
+        - tool_call_message: Tool being invoked
+        - assistant_message: Final response text
+        - stop_reason: Stream complete
+        - ping: Keep-alive
+        - error_message: Error occurred
+
+        Ignores (returns None):
+        - tool_return_message: Tool execution results (internal)
+        - usage_statistics: Token counts (internal)
+        - hidden_reasoning_message: Hidden thinking (internal)
+        - system_message, user_message: Echo of input (internal)
+        """
+        msg_type = getattr(chunk, "message_type", None)
+        event_data: dict[str, Any] | None = None
+
+        if msg_type == "reasoning_message":
+            reasoning = getattr(chunk, "reasoning", "")
+            event_data = {"type": "status", "content": "Thinking...", "reasoning": reasoning}
+        elif msg_type == "tool_call_message":
+            tool_call = getattr(chunk, "tool_call", None)
+            tool_name = getattr(tool_call, "name", "tool") if tool_call else "tool"
+            event_data = {"type": "status", "content": f"Using {tool_name}..."}
+        elif msg_type == "assistant_message":
+            # Note: content can be Union[str, List[ContentPart]] per SDK
+            content = getattr(chunk, "content", "")
+            if not isinstance(content, str):
+                content = str(content)
+            # Strip Letta metadata (follow_ups, title, tags) from content
+            content = self._strip_letta_metadata(content)
+            event_data = {"type": "message", "content": content}
+        elif msg_type == "stop_reason":
+            event_data = {"type": "done"}
+        elif msg_type == "ping":
+            return ": keepalive\n\n"
+        elif msg_type == "error_message":
+            error_msg = getattr(chunk, "message", "Unknown error")
+            event_data = {"type": "error", "message": error_msg}
+
+        # Intentionally ignore: tool_return_message, usage_statistics,
+        # hidden_reasoning_message, system_message, user_message
+        if event_data is None:
+            return None
+        return f"data: {json.dumps(event_data)}\n\n"
+
+    def _strip_letta_metadata(self, content: str) -> str:
+        """
+        Strip Letta metadata (follow_ups, title, tags) from message content.
+
+        Letta appends JSON objects like { "follow_ups": [...] }{ "title": "..." }
+        to the end of messages. This strips them to show only the actual message.
+        """
+        if not content:
+            return content
+
+        # Find the first { that starts a JSON object at the end
+        # Work backwards to find where the actual message ends
+        result = content
+        while result:
+            # Find the last { in the string
+            last_brace = result.rfind("{")
+            if last_brace == -1:
+                break
+
+            # Check if everything after this brace looks like JSON metadata
+            potential_json = result[last_brace:]
+            try:
+                parsed = json.loads(potential_json)
+                # If it's a dict with known metadata keys, strip it
+                if isinstance(parsed, dict) and any(
+                    k in parsed for k in ("follow_ups", "title", "tags")
+                ):
+                    result = result[:last_brace].rstrip()
+                else:
+                    break
+            except json.JSONDecodeError:
+                break
+
+        return result
 
     def _extract_response(self, response: Any) -> str:
         """Extract text from Letta response object."""
@@ -178,7 +297,7 @@ class AgentManager:
     def check_letta_connection(self) -> bool:
         """Check if Letta server is reachable."""
         try:
-            self.client.list_agents()
+            self.client.agents.list()
             return True
         except Exception:
             return False
