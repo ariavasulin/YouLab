@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from letta_starter.config.settings import ServiceSettings
 from letta_starter.server.agents import AgentManager
@@ -15,6 +16,7 @@ from letta_starter.server.schemas import (
     ChatResponse,
     CreateAgentRequest,
     HealthResponse,
+    StreamChatRequest,
 )
 from letta_starter.server.strategy import init_strategy_manager
 from letta_starter.server.strategy import router as strategy_router
@@ -129,7 +131,7 @@ async def list_agents(user_id: str | None = None) -> AgentListResponse:
     else:
         # List all YouLab agents (admin use)
         agents = []
-        for agent in manager.client.list_agents():
+        for agent in manager.client.agents.list():
             if agent.name and agent.name.startswith("youlab_"):
                 meta = agent.metadata or {}
                 agents.append(
@@ -202,3 +204,31 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Failed to communicate with agent",
             ) from None
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: StreamChatRequest) -> StreamingResponse:
+    """Send a message to an agent with streaming response (SSE)."""
+    manager = get_agent_manager()
+
+    # Verify agent exists
+    info = manager.get_agent_info(request.agent_id)
+    if info is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Agent not found: {request.agent_id}",
+        )
+
+    return StreamingResponse(
+        manager.stream_message(
+            agent_id=request.agent_id,
+            message=request.message,
+            enable_thinking=request.enable_thinking,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

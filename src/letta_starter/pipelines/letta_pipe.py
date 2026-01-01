@@ -1,106 +1,98 @@
 """
-OpenWebUI Pipeline for YouLab.
+title: YouLab Tutor.
 
-This Pipe forwards requests to the LettaStarter HTTP service.
-It extracts user context from OpenWebUI and chat title from the database.
+description: College essay coaching tutor with persistent memory
+version: 0.1.0
 """
 
-from collections.abc import Generator, Iterator
+import json
+from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from typing import Any
 
 import httpx
+from httpx_sse import aconnect_sse
 from pydantic import BaseModel, Field
 
 
-class Pipeline:
-    """
-    OpenWebUI Pipeline for YouLab tutoring.
-
-    Forwards messages to the LettaStarter HTTP service.
-    Configure using Valves in the OpenWebUI admin panel.
-    """
+class Pipe:
+    """OpenWebUI Pipe for YouLab tutoring with streaming."""
 
     class Valves(BaseModel):
         """Configuration options exposed in OpenWebUI admin."""
 
         LETTA_SERVICE_URL: str = Field(
-            default="http://localhost:8100",
+            default="http://host.docker.internal:8100",
             description="URL of the LettaStarter HTTP service",
         )
         AGENT_TYPE: str = Field(
             default="tutor",
-            description="Agent type to use (tutor, etc.)",
+            description="Agent type to use",
         )
         ENABLE_LOGGING: bool = Field(
             default=True,
             description="Enable detailed logging",
         )
+        ENABLE_THINKING: bool = Field(
+            default=True,
+            description="Show thinking indicators",
+        )
 
     def __init__(self) -> None:
-        """Initialize the pipeline."""
         self.name = "YouLab Tutor"
         self.valves = self.Valves()
 
     async def on_startup(self) -> None:
-        """Called when the pipeline starts."""
         if self.valves.ENABLE_LOGGING:
-            print(f"YouLab Pipeline started. Service URL: {self.valves.LETTA_SERVICE_URL}")
+            print(f"YouLab Pipe started. Service: {self.valves.LETTA_SERVICE_URL}")
 
     async def on_shutdown(self) -> None:
-        """Called when the pipeline stops."""
         if self.valves.ENABLE_LOGGING:
-            print("YouLab Pipeline stopped")
+            print("YouLab Pipe stopped")
 
     async def on_valves_updated(self) -> None:
-        """Called when valves are updated via the UI."""
         if self.valves.ENABLE_LOGGING:
-            print("YouLab Pipeline valves updated")
+            print("YouLab Pipe valves updated")
 
     def _get_chat_title(self, chat_id: str | None) -> str | None:
         """Get chat title from OpenWebUI database."""
         if not chat_id or chat_id.startswith("local:"):
             return None
-
         try:
             from open_webui.models.chats import Chats
 
             chat = Chats.get_chat_by_id(chat_id)
             return chat.title if chat else None
         except ImportError:
-            # Not running inside OpenWebUI
             return None
         except Exception as e:
             if self.valves.ENABLE_LOGGING:
                 print(f"Failed to get chat title: {e}")
             return None
 
-    def _ensure_agent_exists(
+    async def _ensure_agent_exists(
         self,
-        client: httpx.Client,
+        client: httpx.AsyncClient,
         user_id: str,
         user_name: str | None = None,
     ) -> str | None:
-        """Ensure agent exists for user, create if needed. Returns agent_id."""
-        # Check if agent exists
+        """Ensure agent exists for user, create if needed."""
         try:
-            response = client.get(
+            response = await client.get(
                 f"{self.valves.LETTA_SERVICE_URL}/agents",
                 params={"user_id": user_id},
             )
             if response.status_code == HTTPStatus.OK:
-                agents = response.json().get("agents", [])
-                # Find agent of correct type
-                for agent in agents:
+                for agent in response.json().get("agents", []):
                     if agent.get("agent_type") == self.valves.AGENT_TYPE:
                         return agent.get("agent_id")
         except Exception as e:
             if self.valves.ENABLE_LOGGING:
-                print(f"Failed to check existing agents: {e}")
+                print(f"Failed to check agents: {e}")
 
         # Create new agent
         try:
-            response = client.post(
+            response = await client.post(
                 f"{self.valves.LETTA_SERVICE_URL}/agents",
                 json={
                     "user_id": user_id,
@@ -112,101 +104,133 @@ class Pipeline:
                 return response.json().get("agent_id")
             if self.valves.ENABLE_LOGGING:
                 print(f"Failed to create agent: {response.text}")
-            return None
         except Exception as e:
             if self.valves.ENABLE_LOGGING:
                 print(f"Failed to create agent: {e}")
-            return None
+        return None
 
-    def pipe(
+    async def pipe(
         self,
-        user_message: str,
-        model_id: str,
-        messages: list[dict[str, Any]],
         body: dict[str, Any],
         __user__: dict[str, Any] | None = None,
         __metadata__: dict[str, Any] | None = None,
-    ) -> str | Generator[str, None, None] | Iterator[str]:
-        """
-        Process a message through the YouLab tutor.
+        __event_emitter__: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
+    ) -> str:
+        """Process a message with streaming."""
+        # Extract message from body
+        messages = body.get("messages", [])
+        user_message = messages[-1].get("content", "") if messages else ""
 
-        Args:
-            user_message: The user's message text
-            model_id: The selected model ID (from OpenWebUI)
-            messages: Full conversation history
-            body: Additional request body data
-            __user__: User information from OpenWebUI
-            __metadata__: Request metadata (chat_id, message_id, etc.)
+        if not user_message:
+            return "Error: No message provided."
 
-        Returns:
-            Agent response as string
-
-        """
         # Extract user info
         user_id = __user__.get("id") if __user__ else None
         user_name = __user__.get("name") if __user__ else None
 
         if not user_id:
-            return "Error: Could not identify user. Please log in."
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "message",
+                        "data": {"content": "Error: Could not identify user. Please log in."},
+                    }
+                )
+            return ""
 
-        # Extract chat context
+        # Get chat context
         chat_id = __metadata__.get("chat_id") if __metadata__ else None
         chat_title = self._get_chat_title(chat_id)
 
         if self.valves.ENABLE_LOGGING:
-            print(f"YouLab: user={user_id}, chat={chat_id}, title={chat_title}")
+            print(f"YouLab: user={user_id}, chat={chat_id}")
 
         try:
-            with httpx.Client(timeout=120.0) as client:
-                # Ensure agent exists
-                agent_id = self._ensure_agent_exists(client, user_id, user_name)
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                agent_id = await self._ensure_agent_exists(client, user_id, user_name)
                 if not agent_id:
-                    return "Error: Could not create or find your tutor agent."
+                    if __event_emitter__:
+                        await __event_emitter__(
+                            {
+                                "type": "message",
+                                "data": {"content": "Error: Could not find or create tutor agent."},
+                            }
+                        )
+                    return ""
 
-                # Send message
-                response = client.post(
-                    f"{self.valves.LETTA_SERVICE_URL}/chat",
+                # Stream from HTTP service
+                async with aconnect_sse(
+                    client,
+                    "POST",
+                    f"{self.valves.LETTA_SERVICE_URL}/chat/stream",
                     json={
                         "agent_id": agent_id,
                         "message": user_message,
                         "chat_id": chat_id,
                         "chat_title": chat_title,
+                        "enable_thinking": self.valves.ENABLE_THINKING,
                     },
-                )
-
-                if response.status_code == HTTPStatus.OK:
-                    return response.json().get("response", "No response from tutor.")
-                if self.valves.ENABLE_LOGGING:
-                    print(f"YouLab chat error: {response.status_code} - {response.text}")
-                return f"Error communicating with tutor: {response.status_code}"
+                ) as event_source:
+                    async for sse in event_source.aiter_sse():
+                        if sse.data:
+                            await self._handle_sse_event(sse.data, __event_emitter__)
 
         except httpx.TimeoutException:
-            return "Error: Request timed out. Please try again."
+            if __event_emitter__:
+                await __event_emitter__(
+                    {"type": "message", "data": {"content": "Error: Request timed out."}}
+                )
+        except httpx.ConnectError:
+            if __event_emitter__:
+                await __event_emitter__(
+                    {
+                        "type": "message",
+                        "data": {"content": "Error: Could not connect to tutor service."},
+                    }
+                )
         except Exception as e:
             if self.valves.ENABLE_LOGGING:
                 print(f"YouLab error: {e}")
-            return f"Error: {e!s}"
+            if __event_emitter__:
+                await __event_emitter__({"type": "message", "data": {"content": f"Error: {e!s}"}})
 
+        return ""
 
-# For standalone testing
-if __name__ == "__main__":
-    import asyncio
+    async def _handle_sse_event(
+        self,
+        data: str,
+        emitter: Callable[[dict[str, Any]], Awaitable[None]] | None,
+    ) -> None:
+        """Handle SSE event from HTTP service."""
+        if not emitter:
+            return
 
-    async def test() -> None:
-        pipeline = Pipeline()
-        await pipeline.on_startup()
+        try:
+            event = json.loads(data)
+            event_type = event.get("type")
 
-        # Simulate OpenWebUI context
-        response = pipeline.pipe(
-            user_message="Hello! What can you help me with?",
-            model_id="youlab",
-            messages=[],
-            body={},
-            __user__={"id": "test-user-123", "name": "Test User"},
-            __metadata__={"chat_id": "local:test"},
-        )
-        print(f"Response: {response}")
+            if event_type == "status":
+                await emitter(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": event.get("content", "Processing..."),
+                            "done": False,
+                        },
+                    }
+                )
+            elif event_type == "message":
+                await emitter({"type": "message", "data": {"content": event.get("content", "")}})
+            elif event_type == "done":
+                await emitter({"type": "status", "data": {"description": "Complete", "done": True}})
+            elif event_type == "error":
+                await emitter(
+                    {
+                        "type": "message",
+                        "data": {"content": f"Error: {event.get('message', 'Unknown')}"},
+                    }
+                )
 
-        await pipeline.on_shutdown()
-
-    asyncio.run(test())
+        except json.JSONDecodeError:
+            if self.valves.ENABLE_LOGGING:
+                print(f"Failed to parse SSE: {data}")

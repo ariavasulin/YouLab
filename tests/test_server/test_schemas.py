@@ -8,6 +8,7 @@ from letta_starter.server.schemas import (
     ChatRequest,
     CreateAgentRequest,
     HealthResponse,
+    StreamChatRequest,
 )
 
 
@@ -111,3 +112,39 @@ class TestHealthResponse:
         )
         assert response.status == "degraded"
         assert response.letta_connected is False
+
+
+class TestStreamChatRequest:
+    """Tests for StreamChatRequest schema."""
+
+    def test_minimal_request(self):
+        """StreamChatRequest accepts minimal required fields."""
+        request = StreamChatRequest(agent_id="agent-123", message="Hello")
+        assert request.agent_id == "agent-123"
+        assert request.message == "Hello"
+        assert request.chat_id is None
+        assert request.chat_title is None
+        assert request.enable_thinking is True
+
+    def test_full_request(self):
+        """StreamChatRequest accepts all optional fields."""
+        request = StreamChatRequest(
+            agent_id="agent-123",
+            message="Hello",
+            chat_id="chat-456",
+            chat_title="My Chat",
+            enable_thinking=False,
+        )
+        assert request.chat_id == "chat-456"
+        assert request.chat_title == "My Chat"
+        assert request.enable_thinking is False
+
+    def test_missing_agent_id(self):
+        """StreamChatRequest requires agent_id."""
+        with pytest.raises(ValidationError):
+            StreamChatRequest(message="Hello")  # type: ignore[call-arg]
+
+    def test_missing_message(self):
+        """StreamChatRequest requires message."""
+        with pytest.raises(ValidationError):
+            StreamChatRequest(agent_id="agent-123")  # type: ignore[call-arg]

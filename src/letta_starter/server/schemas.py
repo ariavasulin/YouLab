@@ -4,6 +4,8 @@ Request and response schemas for the HTTP service.
 This is a minimal stub for TDD. Tests should fail until implementation is complete.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -23,7 +25,7 @@ class AgentResponse(BaseModel):
     user_id: str
     agent_type: str
     agent_name: str
-    created_at: int | None = None
+    created_at: datetime | int | None = None
 
 
 class AgentListResponse(BaseModel):
@@ -40,6 +42,16 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message content")
     chat_id: str | None = Field(default=None, description="OpenWebUI chat ID")
     chat_title: str | None = Field(default=None, description="OpenWebUI chat title")
+
+
+class StreamChatRequest(BaseModel):
+    """Request to send a message with streaming response."""
+
+    agent_id: str = Field(..., description="Letta agent ID")
+    message: str = Field(..., description="User message content")
+    chat_id: str | None = Field(default=None, description="OpenWebUI chat ID")
+    chat_title: str | None = Field(default=None, description="OpenWebUI chat title")
+    enable_thinking: bool = Field(default=True, description="Include reasoning in stream")
 
 
 class ChatResponse(BaseModel):

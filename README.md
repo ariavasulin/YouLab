@@ -34,16 +34,17 @@ Context-engineered Letta agents with comprehensive observability, exposed via Op
 # Clone the repository
 cd LettaStarter
 
-# Install with UV
-uv sync
+# Development setup (recommended) - installs all deps + pre-commit hooks
+make setup
+
+# Or manually with UV
+uv sync --all-extras
 
 # Or with pip
-pip install -e .
-
-# Install with dev dependencies
-uv sync --all-extras
-# Or: pip install -e ".[dev,observability]"
+pip install -e ".[dev,observability]"
 ```
+
+**Important**: Always use `uv sync --all-extras` (or `make setup`) for development. Using `uv sync` alone skips dev dependencies and will cause import errors when running tests.
 
 ### Configuration
 
@@ -261,18 +262,23 @@ LANGFUSE_SECRET_KEY=sk-...
 ## Development
 
 ```bash
-# Run tests
-uv run pytest
+# First-time setup (installs all deps + pre-commit hooks)
+make setup
 
-# Lint
-uv run ruff check src/
+# Run verification (lint + typecheck + tests)
+make verify-agent
 
-# Type check
-uv run basedpyright src/
+# Quick check (lint + typecheck only)
+make check-agent
+
+# Auto-fix lint issues
+make lint-fix
 
 # Run HTTP server
 uv run letta-server
 ```
+
+The `-agent` variants use the "swallow success, show failure" pattern for cleaner output.
 
 ## License
 
