@@ -20,6 +20,7 @@ src/letta_starter/       # Python backend
   memory/                # Memory blocks, rotation strategies, manager
   pipelines/             # OpenWebUI Pipe integration
   server/                # FastAPI HTTP service (agent management, chat endpoints)
+    strategy/            # RAG-enabled strategy agent (project knowledge queries)
   observability/         # Logging, metrics, tracing (Langfuse)
   config/                # Pydantic settings from env
   main.py                # CLI entry point
@@ -44,6 +45,9 @@ make test-agent                  # Pytest only (no coverage)
 
 # Individual tools
 make lint-fix                    # Auto-fix lint issues
+
+# Documentation
+npx serve docs                   # Serve docs locally at http://localhost:3000
 ```
 
 Pre-commit hooks run `make verify` automatically - commits are blocked if checks fail.
@@ -67,6 +71,8 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/agents/templates.py` - AgentTemplate + TUTOR_TEMPLATE for essay coaching
 - `src/letta_starter/server/main.py` - FastAPI app with /health, /agents, /chat endpoints
 - `src/letta_starter/server/agents.py` - AgentManager for per-user Letta agents
+- `src/letta_starter/server/strategy/manager.py` - StrategyManager singleton for RAG queries
+- `src/letta_starter/server/strategy/router.py` - FastAPI router: /strategy/documents, /ask, /health
 - `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
 - `src/letta_starter/config/settings.py` - Pydantic settings from environment
 - `pyproject.toml` - Dependencies and tool config

@@ -1,0 +1,447 @@
+# HTTP Service
+
+[[README|← Back to Overview]]
+
+The HTTP service is a FastAPI application that provides RESTful endpoints for agent management and chat functionality.
+
+## Overview
+
+| Property | Value |
+|----------|-------|
+| Default Host | `127.0.0.1` |
+| Default Port | `8100` |
+| Framework | FastAPI |
+| Entry Point | `src/letta_starter/server/main.py` |
+
+## Starting the Service
+
+```bash
+# Using the CLI
+uv run letta-server
+
+# With custom settings
+YOULAB_SERVICE_HOST=0.0.0.0 \
+YOULAB_SERVICE_PORT=8000 \
+uv run letta-server
+```
+
+## Endpoints
+
+### Health Check
+
+```http
+GET /health
+```
+
+Returns service health status and Letta connection state.
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "letta_connected": true,
+  "version": "0.1.0"
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `ok` | Service healthy, Letta connected |
+| `degraded` | Service running, Letta unavailable |
+
+---
+
+### Create Agent
+
+```http
+POST /agents
+```
+
+Creates a new agent for a user from a template.
+
+**Request Body**:
+```json
+{
+  "user_id": "user123",
+  "agent_type": "tutor",
+  "user_name": "Alice"
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `user_id` | string | Yes | - | Unique user identifier |
+| `agent_type` | string | No | `"tutor"` | Template to use |
+| `user_name` | string | No | `null` | User's display name |
+
+**Response** (201 Created):
+```json
+{
+  "agent_id": "agent-abc123",
+  "user_id": "user123",
+  "agent_type": "tutor",
+  "agent_name": "youlab_user123_tutor",
+  "created_at": "2025-12-31T10:00:00Z"
+}
+```
+
+**Errors**:
+- `400` - Unknown agent type
+- `503` - Letta unavailable
+
+---
+
+### Get Agent
+
+```http
+GET /agents/{agent_id}
+```
+
+Retrieves agent information by ID.
+
+**Response**:
+```json
+{
+  "agent_id": "agent-abc123",
+  "user_id": "user123",
+  "agent_type": "tutor",
+  "agent_name": "youlab_user123_tutor",
+  "created_at": "2025-12-31T10:00:00Z"
+}
+```
+
+**Errors**:
+- `404` - Agent not found
+
+---
+
+### List Agents
+
+```http
+GET /agents
+GET /agents?user_id=user123
+```
+
+Lists agents, optionally filtered by user.
+
+**Query Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `user_id` | string | Filter by user ID |
+
+**Response**:
+```json
+{
+  "agents": [
+    {
+      "agent_id": "agent-abc123",
+      "user_id": "user123",
+      "agent_type": "tutor",
+      "agent_name": "youlab_user123_tutor",
+      "created_at": "2025-12-31T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### Chat (Synchronous)
+
+```http
+POST /chat
+```
+
+Sends a message and waits for complete response.
+
+**Request Body**:
+```json
+{
+  "agent_id": "agent-abc123",
+  "message": "Help me brainstorm essay topics",
+  "chat_id": "chat-xyz",
+  "chat_title": "Essay Brainstorming"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_id` | string | Yes | Target agent |
+| `message` | string | Yes | User's message |
+| `chat_id` | string | No | OpenWebUI chat ID |
+| `chat_title` | string | No | Current chat title |
+
+**Response**:
+```json
+{
+  "response": "Great! Let's explore some essay topics...",
+  "agent_id": "agent-abc123"
+}
+```
+
+**Errors**:
+- `404` - Agent not found
+- `503` - Failed to communicate with agent
+
+---
+
+### Chat (Streaming)
+
+```http
+POST /chat/stream
+```
+
+Sends a message with Server-Sent Events (SSE) response.
+
+**Request Body**:
+```json
+{
+  "agent_id": "agent-abc123",
+  "message": "What makes a compelling personal narrative?",
+  "chat_id": "chat-xyz",
+  "chat_title": "Essay Writing",
+  "enable_thinking": true
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `agent_id` | string | Yes | - | Target agent |
+| `message` | string | Yes | - | User's message |
+| `chat_id` | string | No | `null` | Chat ID |
+| `chat_title` | string | No | `null` | Chat title |
+| `enable_thinking` | bool | No | `true` | Show thinking indicators |
+
+**Response** (SSE stream):
+```
+data: {"type": "status", "content": "Thinking..."}
+
+data: {"type": "status", "content": "Using memory_search..."}
+
+data: {"type": "message", "content": "A compelling personal narrative has..."}
+
+data: {"type": "done"}
+```
+
+**Event Types**:
+
+| Type | Description |
+|------|-------------|
+| `status` | Processing indicator (thinking, tool use) |
+| `message` | Actual response content |
+| `done` | Stream complete |
+| `error` | Error occurred |
+
+---
+
+## Strategy Endpoints
+
+The strategy agent provides RAG capabilities for project knowledge.
+
+### Upload Document
+
+```http
+POST /strategy/documents
+```
+
+Uploads content to the strategy agent's archival memory.
+
+**Request Body**:
+```json
+{
+  "content": "# Architecture\n\nYouLab uses a layered architecture...",
+  "tags": ["architecture", "design"]
+}
+```
+
+**Response** (201 Created):
+```json
+{
+  "success": true
+}
+```
+
+---
+
+### Ask Question
+
+```http
+POST /strategy/ask
+```
+
+Queries the strategy agent (searches archival memory first).
+
+**Request Body**:
+```json
+{
+  "question": "What is the YouLab architecture?"
+}
+```
+
+**Response**:
+```json
+{
+  "response": "Based on the documentation, YouLab uses..."
+}
+```
+
+---
+
+### Search Documents
+
+```http
+GET /strategy/documents?query=architecture&limit=5
+```
+
+Searches archival memory directly.
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query` | string | Required | Search query |
+| `limit` | int | `5` | Max results |
+
+**Response**:
+```json
+{
+  "documents": [
+    "[TAGS: architecture, design]\n# Architecture\n...",
+    "[TAGS: overview]\n# System Overview\n..."
+  ]
+}
+```
+
+---
+
+### Strategy Health
+
+```http
+GET /strategy/health
+```
+
+Checks strategy agent status.
+
+**Response**:
+```json
+{
+  "status": "ready",
+  "agent_exists": true
+}
+```
+
+---
+
+## AgentManager
+
+The `AgentManager` class handles all agent operations.
+
+### Agent Naming
+
+```python
+agent_name = f"youlab_{user_id}_{agent_type}"
+# Example: youlab_user123_tutor
+```
+
+### Agent Metadata
+
+```python
+metadata = {
+    "youlab_user_id": user_id,
+    "youlab_agent_type": agent_type,
+}
+```
+
+### Caching
+
+```python
+# Cache structure
+_cache: dict[tuple[str, str], str]  # (user_id, agent_type) -> agent_id
+
+# Lookup order
+1. Check cache
+2. Query Letta by agent name
+3. Return None if not found
+```
+
+### Cache Rebuild
+
+On service startup, the cache is rebuilt from Letta:
+
+```python
+async def lifespan(app):
+    count = await app.state.agent_manager.rebuild_cache()
+    log.info("startup_complete", cached_agents=count)
+```
+
+---
+
+## Streaming Implementation
+
+### Letta Chunk Types
+
+The service translates Letta streaming chunks to SSE events:
+
+| Letta Type | SSE Event |
+|------------|-----------|
+| `reasoning_message` | `{"type": "status", "content": "Thinking..."}` |
+| `tool_call_message` | `{"type": "status", "content": "Using {tool}..."}` |
+| `assistant_message` | `{"type": "message", "content": "..."}` |
+| `stop_reason` | `{"type": "done"}` |
+| `ping` | `": keepalive\n\n"` |
+| `error_message` | `{"type": "error", "message": "..."}` |
+
+### Metadata Stripping
+
+Letta appends JSON metadata to messages. The service strips it:
+
+```python
+# Before: "Here are some topics...{"follow_ups": ["What about..."]}"
+# After:  "Here are some topics..."
+```
+
+---
+
+## Tracing
+
+All chat requests are traced via Langfuse:
+
+```python
+with trace_chat(
+    user_id=user_id,
+    agent_id=request.agent_id,
+    chat_id=request.chat_id,
+    metadata={"chat_title": request.chat_title},
+) as trace_ctx:
+    response_text = manager.send_message(...)
+    trace_generation(trace_ctx, ...)
+```
+
+See [[Configuration]] for Langfuse settings.
+
+---
+
+## Error Handling
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Invalid request (unknown agent type) |
+| `404` | Agent not found |
+| `500` | Internal error |
+| `503` | Letta unavailable |
+
+All errors include a `detail` field:
+
+```json
+{
+  "detail": "Agent not found: agent-abc123"
+}
+```
+
+---
+
+## Related Pages
+
+- [[API]] - Complete API reference
+- [[Schemas]] - Request/response models
+- [[Configuration]] - Service settings
+- [[Strategy-Agent]] - Strategy agent details
