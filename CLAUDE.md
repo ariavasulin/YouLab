@@ -27,6 +27,10 @@ src/letta_starter/       # Python backend
 tests/                   # Pytest suite (including tests/test_server/)
 ```
 
+## Documentation
+
+/docs is religiously maintained and the unequivocal source of truth for anything related to this project. When answering questions and working on this project, consult the documentation here first and with highest precedence. 
+
 ## Commands
 
 ```bash
@@ -88,14 +92,6 @@ OpenWebUI (Pipe) → LettaStarter HTTP Service → Letta Server → Claude API
 ```
 
 **Full plan**: `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md`
-
-- [X] **Phase 1: HTTP Service** — FastAPI server with agent management (`server/`)
-- [ ] **Phase 2: User Identity & Routing** — Per-student Letta agents via Pipe integration
-- [ ] **Phase 3: Honcho Integration** — Message persistence, dialectic API for student insights
-- [ ] **Phase 4: Thread Context** — Parse chat titles to update agent context per module/lesson
-- [ ] **Phase 5: Curriculum Parser** — Load course definitions from markdown, hot-reload
-- [ ] **Phase 6: Background Worker** — Query Honcho dialectic on idle, update agent memory
-- [ ] **Phase 7: Student Onboarding** — First-time setup flow, profile initialization
 
 ## Thoughts Directory
 

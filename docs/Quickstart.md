@@ -2,79 +2,143 @@
 
 [[README|← Back to Overview]]
 
-Get YouLab running locally in 5 minutes.
+Get the full YouLab stack running locally.
 
 ## Prerequisites
 
 - Python 3.11+
 - [uv](https://github.com/astral-sh/uv) package manager
-- Docker (for Letta server)
+- [Docker](https://docs.docker.com/get-docker/) (for OpenWebUI, Ollama, and Letta)
+
+## Services Overview
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| OpenWebUI | 3000 | Chat frontend |
+| Ollama | 11434 | Local LLM inference (optional) |
+| Letta Server | 8283 | Agent framework with persistent memory |
+| HTTP Service | 8100 | FastAPI bridge (AgentManager, StrategyManager) |
+
+```
+Browser → OpenWebUI:3000 → HTTP Service:8100 → Letta:8283 → Claude API
+```
+
+---
 
 ## Step 1: Clone and Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/youlab/youlab.git
 cd youlab
 
-# Install dependencies
+# Install dependencies and pre-commit hooks
 make setup
 ```
 
-This installs all dependencies and configures pre-commit hooks.
+---
 
-## Step 2: Start Letta Server
+## Step 2: Start Docker Services
 
-Letta server runs in Docker:
+### Option A: Full Stack (Recommended)
+
+Start OpenWebUI, Ollama, and Letta together:
 
 ```bash
-# Pull and run Letta
+# Start OpenWebUI + Ollama
+cd OpenWebUI/open-webui
+docker compose up -d
+
+# Start Letta (from project root)
+cd ../..
 docker run -d \
-  --name letta-server \
+  --name letta \
   -p 8283:8283 \
   -v letta-data:/root/.letta \
-  lettaai/letta:latest
+  letta/letta:latest
 ```
 
-Verify it's running:
+### Option B: Letta Only (API Development)
+
+If you only need the backend API without the chat UI:
 
 ```bash
+docker run -d \
+  --name letta \
+  -p 8283:8283 \
+  -v letta-data:/root/.letta \
+  letta/letta:latest
+```
+
+### Verify Docker Services
+
+```bash
+# Check all containers are running
+docker ps
+
+# Expected output:
+# CONTAINER ID   IMAGE                        PORTS                    NAMES
+# ...            ghcr.io/open-webui/open-webui   0.0.0.0:3000->8080/tcp   open-webui
+# ...            ollama/ollama                   11434/tcp                ollama
+# ...            letta/letta                     0.0.0.0:8283->8283/tcp   letta
+
+# Test Letta health
 curl http://localhost:8283/v1/health
 # Should return: {"status": "ok"}
 ```
 
+---
+
 ## Step 3: Configure Environment
 
 ```bash
-# Copy example config
 cp .env.example .env
-
-# Edit with your API keys
-vim .env
 ```
 
-**Required settings**:
+Edit `.env` with your API keys:
 
 ```bash
 # Letta connection
 LETTA_BASE_URL=http://localhost:8283
 
-# LLM provider (OpenAI or Anthropic)
+# LLM provider (choose one)
 OPENAI_API_KEY=sk-...
 # or
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+---
+
 ## Step 4: Start HTTP Service
 
 ```bash
-# Start the YouLab service
 uv run letta-server
 ```
 
 The service starts on `http://localhost:8100`.
 
-## Step 5: Test the API
+```bash
+# Verify it's running
+curl http://localhost:8100/health
+# Should return: {"status": "ok", "letta_connected": true, ...}
+```
+
+---
+
+## Step 5: Access the UI
+
+Open http://localhost:3000 in your browser.
+
+**First-time setup**:
+1. Create an admin account (first user becomes admin)
+2. Go to Admin Panel → Settings → Functions → Pipes
+3. Add the YouLab Pipe from `src/letta_starter/pipelines/letta_pipe.py`
+4. Configure the Pipe valves:
+   - `LETTA_SERVICE_URL`: `http://host.docker.internal:8100`
+   - `AGENT_TYPE`: `tutor`
+
+---
+
+## Step 6: Test the API
 
 ### Create an Agent
 
@@ -116,15 +180,105 @@ curl -N -X POST http://localhost:8100/chat/stream \
   }'
 ```
 
-## Step 6: Connect OpenWebUI (Optional)
+---
 
-If using OpenWebUI as the frontend:
+## Quick Reference
 
-1. Start OpenWebUI (see [[Pipeline]] for details)
-2. Add the Pipe function from `src/letta_starter/pipelines/letta_pipe.py`
-3. Configure the Pipe valves:
-   - `LETTA_SERVICE_URL`: `http://host.docker.internal:8100`
-   - `AGENT_TYPE`: `tutor`
+### Start Everything
+
+```bash
+# Docker services
+cd OpenWebUI/open-webui && docker compose up -d && cd ../..
+docker start letta  # if already created
+
+# HTTP service
+uv run letta-server
+```
+
+### Stop Everything
+
+```bash
+# Stop HTTP service: Ctrl+C
+
+# Stop Docker
+docker stop open-webui ollama letta
+```
+
+### Restart After Reboot
+
+```bash
+# Containers may be stopped or paused after reboot
+docker start open-webui ollama letta
+
+# If containers show as "Up" but are unreachable:
+docker unpause open-webui ollama letta
+
+# Start HTTP service
+uv run letta-server
+```
+
+---
+
+## Troubleshooting
+
+### OpenWebUI not reachable (localhost:3000)
+
+```bash
+# Check container status
+docker ps
+
+# If status shows "(Paused)":
+docker unpause open-webui
+
+# If container isn't running:
+docker start open-webui
+
+# Check logs
+docker logs open-webui --tail 50
+```
+
+### Letta server not responding
+
+```bash
+# Check if container is running
+docker ps | grep letta
+
+# View logs
+docker logs letta --tail 50
+
+# Restart
+docker restart letta
+```
+
+### HTTP service port already in use
+
+```bash
+# Check what's using port 8100
+lsof -i :8100
+
+# Kill the process if needed
+kill -9 <PID>
+```
+
+### Agent creation fails
+
+```bash
+# Verify Letta health
+curl http://localhost:8283/v1/health
+
+# Check service logs (run with debug)
+LOG_LEVEL=DEBUG uv run letta-server
+```
+
+### Port 3000 conflict with docs server
+
+OpenWebUI uses port 3000. If you need to serve docs simultaneously:
+
+```bash
+npx serve docs -p 3001
+```
+
+---
 
 ## Verify Everything Works
 
@@ -142,44 +296,11 @@ Expected output:
 ✓ Tests (45 tests in 2.1s)
 ```
 
+---
+
 ## Next Steps
 
 - [[Architecture]] - Understand the system design
-- [[HTTP-Service]] - Explore all endpoints
-- [[Development]] - Set up your development environment
-- [[Configuration]] - All configuration options
-
-## Troubleshooting
-
-### Letta server not responding
-
-```bash
-# Check if container is running
-docker ps | grep letta
-
-# View logs
-docker logs letta-server
-
-# Restart
-docker restart letta-server
-```
-
-### Agent creation fails
-
-```bash
-# Verify Letta health
-curl http://localhost:8283/v1/health
-
-# Check service logs
-uv run letta-server --log-level DEBUG
-```
-
-### Tests failing
-
-```bash
-# Run with verbose output
-uv run pytest -v
-
-# Run specific test
-uv run pytest tests/test_server/test_endpoints.py -v
-```
+- [[HTTP-Service]] - Explore all API endpoints
+- [[Pipeline]] - OpenWebUI Pipe integration details
+- [[Configuration]] - All environment variables
