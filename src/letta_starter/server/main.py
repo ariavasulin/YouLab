@@ -1,6 +1,6 @@
 """FastAPI HTTP service for LettaStarter."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 
 import structlog
@@ -8,6 +8,8 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from letta_starter.config.settings import ServiceSettings
+from letta_starter.honcho import HonchoClient
+from letta_starter.honcho.client import create_persist_task
 from letta_starter.server.agents import AgentManager
 from letta_starter.server.schemas import (
     AgentListResponse,
@@ -33,6 +35,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("starting_service", host=settings.host, port=settings.port)
     app.state.agent_manager = AgentManager(letta_base_url=settings.letta_base_url)
     init_strategy_manager(letta_base_url=settings.letta_base_url)
+
+    # Initialize Honcho client (if enabled)
+    if settings.honcho_enabled:
+        app.state.honcho_client = HonchoClient(
+            workspace_id=settings.honcho_workspace_id,
+            api_key=settings.honcho_api_key,
+            environment=settings.honcho_environment,
+        )
+        honcho_ok = app.state.honcho_client.check_connection()
+        log.info("honcho_initialized", connected=honcho_ok)
+    else:
+        app.state.honcho_client = None
+        log.info("honcho_disabled")
 
     # Rebuild cache from Letta
     try:
@@ -63,15 +78,29 @@ def get_agent_manager() -> AgentManager:
     return app.state.agent_manager
 
 
+def get_honcho_client() -> HonchoClient | None:
+    """Get the Honcho client from app state (may be None if disabled)."""
+    return getattr(app.state, "honcho_client", None)
+
+
 # Health endpoint
 @app.get("/health")
 async def health() -> HealthResponse:
     """Check service health."""
     manager = get_agent_manager()
+    honcho = get_honcho_client()
+
     letta_ok = manager.check_letta_connection()
+    honcho_ok = honcho.check_connection() if honcho else False
+
+    # Service is "ok" if Letta works, "degraded" otherwise
+    # Honcho status is informational (not required for core function)
+    health_status = "ok" if letta_ok else "degraded"
+
     return HealthResponse(
-        status="ok" if letta_ok else "degraded",
+        status=health_status,
         letta_connected=letta_ok,
+        honcho_connected=honcho_ok,
     )
 
 
@@ -152,6 +181,7 @@ async def list_agents(user_id: str | None = None) -> AgentListResponse:
 async def chat(request: ChatRequest) -> ChatResponse:
     """Send a message to an agent."""
     manager = get_agent_manager()
+    honcho = get_honcho_client()
 
     # Verify agent exists
     info = manager.get_agent_info(request.agent_id)
@@ -162,6 +192,19 @@ async def chat(request: ChatRequest) -> ChatResponse:
         )
 
     user_id = info.get("user_id", "unknown")
+    agent_type = info.get("agent_type", "tutor")
+
+    # Persist user message to Honcho (fire-and-forget)
+    if request.chat_id:
+        create_persist_task(
+            honcho_client=honcho,
+            user_id=user_id,
+            chat_id=request.chat_id,
+            message=request.message,
+            is_user=True,
+            chat_title=request.chat_title,
+            agent_type=agent_type,
+        )
 
     with trace_chat(
         user_id=user_id,
@@ -189,6 +232,18 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 output_text=response_text,
             )
 
+            # Persist agent response to Honcho (fire-and-forget)
+            if request.chat_id and response_text:
+                create_persist_task(
+                    honcho_client=honcho,
+                    user_id=user_id,
+                    chat_id=request.chat_id,
+                    message=response_text,
+                    is_user=False,
+                    chat_title=request.chat_title,
+                    agent_type=agent_type,
+                )
+
             return ChatResponse(
                 response=response_text if response_text else "No response from agent.",
                 agent_id=request.agent_id,
@@ -209,7 +264,10 @@ async def chat(request: ChatRequest) -> ChatResponse:
 @app.post("/chat/stream")
 async def chat_stream(request: StreamChatRequest) -> StreamingResponse:
     """Send a message to an agent with streaming response (SSE)."""
+    import json
+
     manager = get_agent_manager()
+    honcho = get_honcho_client()
 
     # Verify agent exists
     info = manager.get_agent_info(request.agent_id)
@@ -219,12 +277,60 @@ async def chat_stream(request: StreamChatRequest) -> StreamingResponse:
             detail=f"Agent not found: {request.agent_id}",
         )
 
-    return StreamingResponse(
-        manager.stream_message(
+    user_id = info.get("user_id", "unknown")
+    agent_type = info.get("agent_type", "tutor")
+
+    # Persist user message to Honcho (fire-and-forget)
+    if request.chat_id:
+        create_persist_task(
+            honcho_client=honcho,
+            user_id=user_id,
+            chat_id=request.chat_id,
+            message=request.message,
+            is_user=True,
+            chat_title=request.chat_title,
+            agent_type=agent_type,
+        )
+
+    def stream_with_persistence() -> Iterator[str]:
+        """Wrap streaming to capture full response for Honcho."""
+        full_response: list[str] = []
+
+        for chunk in manager.stream_message(
             agent_id=request.agent_id,
             message=request.message,
             enable_thinking=request.enable_thinking,
-        ),
+        ):
+            # Capture message content for persistence
+            if chunk and '"type": "message"' in chunk:
+                try:
+                    # Extract content from SSE data
+                    sse_prefix = "data: "
+                    prefix_pos = chunk.find(sse_prefix)
+                    data_end = chunk.find("\n\n")
+                    if prefix_pos >= 0 and data_end > prefix_pos:
+                        data_start = prefix_pos + len(sse_prefix)
+                        data = json.loads(chunk[data_start:data_end])
+                        if data.get("type") == "message" and data.get("content"):
+                            full_response.append(data["content"])
+                except (json.JSONDecodeError, KeyError):
+                    pass
+            yield chunk
+
+        # Persist complete response after stream ends
+        if request.chat_id and full_response:
+            create_persist_task(
+                honcho_client=honcho,
+                user_id=user_id,
+                chat_id=request.chat_id,
+                message="".join(full_response),
+                is_user=False,
+                chat_title=request.chat_title,
+                agent_type=agent_type,
+            )
+
+    return StreamingResponse(
+        stream_with_persistence(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -151,3 +151,21 @@ class ServiceSettings(BaseSettings):
         default=True,
         description="Enable Langfuse tracing",
     )
+
+    # Honcho configuration
+    honcho_enabled: bool = Field(
+        default=True,
+        description="Enable Honcho message persistence",
+    )
+    honcho_workspace_id: str = Field(
+        default="youlab",
+        description="Honcho workspace identifier",
+    )
+    honcho_api_key: str | None = Field(
+        default=None,
+        description="Honcho API key (required for production)",
+    )
+    honcho_environment: str = Field(
+        default="demo",
+        description="Honcho environment: demo, local, or production",
+    )
