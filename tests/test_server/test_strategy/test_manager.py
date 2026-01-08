@@ -14,7 +14,7 @@ class TestStrategyManagerSingleton:
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         agent_id = manager.ensure_agent()
 
@@ -31,7 +31,7 @@ class TestStrategyManagerSingleton:
         mock_letta_client.list_agents.return_value = [mock_agent]
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         agent_id = manager.ensure_agent()
 
@@ -46,7 +46,7 @@ class TestStrategyManagerSingleton:
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         # First call creates
         agent_id1 = manager.ensure_agent()
@@ -69,7 +69,7 @@ class TestStrategyManagerDocuments:
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         manager.upload_document("Test content", tags=["test"])
 
@@ -86,7 +86,7 @@ class TestStrategyManagerDocuments:
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         manager.upload_document("Architecture doc", tags=["architecture", "phase1"])
 
@@ -103,7 +103,7 @@ class TestStrategyManagerDocuments:
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         manager.upload_document("Simple content", tags=[])
 
@@ -126,7 +126,7 @@ class TestStrategyManagerAsk:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         response = manager.ask("What is the architecture?")
 
@@ -144,7 +144,7 @@ class TestStrategyManagerAsk:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         response = manager.ask("What is the architecture?")
 
@@ -163,7 +163,7 @@ class TestStrategyManagerAsk:
         mock_letta_client.send_message.return_value = mock_response
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         manager.ask("Question?")
 
@@ -186,7 +186,7 @@ class TestStrategyManagerSearch:
         ]
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         results = manager.search_documents("architecture", limit=5)
 
@@ -202,7 +202,7 @@ class TestStrategyManagerSearch:
         mock_letta_client.get_archival_memory.return_value = []
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         results = manager.search_documents("nonexistent")
 
@@ -222,7 +222,7 @@ class TestStrategyManagerHealthCheck:
         mock_letta_client.list_agents.return_value = [mock_agent]
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         assert manager.check_agent_exists() is True
 
@@ -233,6 +233,6 @@ class TestStrategyManagerHealthCheck:
         mock_letta_client.list_agents.return_value = []
 
         manager = StrategyManager("http://localhost:8283")
-        manager._client = mock_letta_client  # noqa: SLF001
+        manager._client = mock_letta_client
 
         assert manager.check_agent_exists() is False

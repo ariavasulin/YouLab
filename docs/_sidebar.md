@@ -9,6 +9,7 @@
   - [Agent System](Agent-System.md)
   - [Pipeline Integration](Pipeline.md)
   - [Strategy Agent](Strategy-Agent.md)
+  - [Honcho Integration](Honcho.md)
 
 - **Configuration**
   - [Environment Variables](Configuration.md)

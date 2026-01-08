@@ -127,6 +127,7 @@ known-first-party = ["letta_starter"]
     "D",       # docstrings (not required in tests)
     "ANN",     # annotations (not required in tests)
     "PLR2004", # magic-value-comparison (expected values in assertions)
+    "SLF001",  # private-member-access (testing internal methods)
 ]
 
 [tool.basedpyright]

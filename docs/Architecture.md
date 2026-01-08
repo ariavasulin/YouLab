@@ -29,18 +29,26 @@ YouLab is built as a layered architecture where each component has a single resp
 │  └────────┬─────────┘  └────────┬─────────┘                 │
 │           │                     │                            │
 │           └──────────┬──────────┘                            │
+│                      │                                       │
+│           ┌──────────┴──────────┐                            │
+│           │    HonchoClient     │                            │
+│           │ (message persist)   │                            │
+│           └──────────┬──────────┘                            │
 └──────────────────────┼──────────────────────────────────────┘
                        │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Letta Server (:8283)                        │
-│  • Agent lifecycle management                                │
-│  • Core memory (persona + human blocks)                      │
-│  • Archival memory (long-term storage)                       │
-│  • Tool execution                                            │
-└─────────────────────────┬───────────────────────────────────┘
-                          │
-                          ▼
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+┌─────────────────────┐   ┌─────────────────────┐
+│  Letta Server       │   │   Honcho Service    │
+│  (:8283)            │   │   (ToM Layer)       │
+│  • Agent lifecycle  │   │   • Message store   │
+│  • Core memory      │   │   • Session mgmt    │
+│  • Archival memory  │   │   • Peer tracking   │
+│  • Tool execution   │   │                     │
+└─────────┬───────────┘   └─────────────────────┘
+          │
+          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Claude API                                │
 │              (via OpenAI compatibility)                      │
@@ -217,6 +225,10 @@ src/letta_starter/
 │
 ├── config/              # Configuration
 │   └── settings.py      # Settings, ServiceSettings
+│
+├── honcho/              # Message persistence
+│   ├── __init__.py      # Exports HonchoClient
+│   └── client.py        # HonchoClient, create_persist_task
 │
 ├── memory/              # Memory system
 │   ├── blocks.py        # PersonaBlock, HumanBlock
