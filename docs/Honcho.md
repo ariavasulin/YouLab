@@ -129,6 +129,51 @@ if client.check_connection():
     print("Honcho is available")
 ```
 
+#### query_dialectic()
+
+Query Honcho for insights about a student (theory-of-mind):
+
+```python
+from letta_starter.honcho.client import SessionScope
+
+response = await client.query_dialectic(
+    user_id="user123",
+    question="What learning style works best for this student?",
+    session_scope=SessionScope.ALL,
+    recent_limit=5,
+)
+
+if response:
+    print(response.insight)  # "This student prefers hands-on examples..."
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `user_id` | string | Required | Student identifier |
+| `question` | string | Required | Natural language question |
+| `session_scope` | SessionScope | `ALL` | Which sessions to include |
+| `session_id` | string | `None` | Specific session (reserved) |
+| `recent_limit` | int | `5` | Number of recent sessions (reserved) |
+
+**SessionScope enum**:
+
+| Value | Description |
+|-------|-------------|
+| `ALL` | All sessions for this user |
+| `RECENT` | Last N sessions |
+| `CURRENT` | Current/active session only |
+| `SPECIFIC` | Explicit session ID |
+
+**Returns**: `DialecticResponse` or `None` if unavailable.
+
+```python
+@dataclass
+class DialecticResponse:
+    insight: str        # Honcho's analysis
+    session_scope: SessionScope
+    query: str          # Original question
+```
+
 ---
 
 ## Fire-and-Forget Pattern
@@ -249,5 +294,7 @@ metadata = {
 
 - [[Architecture]] - System overview with Honcho
 - [[HTTP-Service]] - Chat endpoint details
+- [[Background-Agents]] - Background agents using dialectic queries
+- [[Agent-Tools]] - Agent tools including query_honcho
 - [[Configuration]] - Environment variables
 - [[Roadmap]] - ToM integration plans

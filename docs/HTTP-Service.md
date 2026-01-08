@@ -334,6 +334,109 @@ Checks strategy agent status.
 
 ---
 
+## Background Endpoints
+
+Background agents run scheduled or manual tasks to enrich agent memory using Honcho dialectic queries. See [[Background-Agents]] for full documentation.
+
+**Location**: `src/letta_starter/server/background.py`
+
+### List Background Agents
+
+```http
+GET /background/agents
+```
+
+Lists all configured background agents across all courses.
+
+**Response**:
+```json
+[
+  {
+    "id": "insight-harvester",
+    "name": "Student Insight Harvester",
+    "course_id": "college-essay",
+    "enabled": true,
+    "triggers": {
+      "schedule": "0 3 * * *",
+      "idle_enabled": false,
+      "manual": true
+    },
+    "query_count": 3
+  }
+]
+```
+
+---
+
+### Run Background Agent
+
+```http
+POST /background/{agent_id}/run
+```
+
+Manually triggers a background agent run.
+
+**Path Parameters**:
+| Parameter | Description |
+|-----------|-------------|
+| `agent_id` | Background agent ID (e.g., `insight-harvester`) |
+
+**Request Body** (optional):
+```json
+{
+  "user_ids": ["user123", "user456"]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_ids` | array | No | Specific users to process (null = all) |
+
+**Response**:
+```json
+{
+  "agent_id": "insight-harvester",
+  "started_at": "2025-01-08T03:00:00Z",
+  "completed_at": "2025-01-08T03:05:00Z",
+  "users_processed": 25,
+  "queries_executed": 75,
+  "enrichments_applied": 68,
+  "error_count": 7,
+  "errors": ["Enrichment failed for user789/learning_style: ..."]
+}
+```
+
+**Errors**:
+- `404` - Background agent not found
+- `500` - Background system not initialized
+
+---
+
+### Reload Configuration
+
+```http
+POST /background/config/reload
+```
+
+Hot-reloads TOML configuration files from disk.
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `config_dir` | string | `config/courses` | Directory to load from |
+
+**Response**:
+```json
+{
+  "success": true,
+  "courses_loaded": 1,
+  "course_ids": ["college-essay"],
+  "message": "Configuration reloaded successfully"
+}
+```
+
+---
+
 ## AgentManager
 
 The `AgentManager` class handles all agent operations.
@@ -448,3 +551,5 @@ All errors include a `detail` field:
 - [[Schemas]] - Request/response models
 - [[Configuration]] - Service settings
 - [[Strategy-Agent]] - Strategy agent details
+- [[Background-Agents]] - Background agent system details
+- [[Honcho]] - Honcho integration and dialectic queries

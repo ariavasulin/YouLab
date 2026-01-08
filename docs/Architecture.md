@@ -87,6 +87,7 @@ FastAPI application providing RESTful endpoints:
 | Agent CRUD | `/agents`, `/agents/{id}` | AgentManager |
 | Chat | `/chat`, `/chat/stream` | AgentManager |
 | Strategy | `/strategy/*` | StrategyManager |
+| Background | `/background/*` | BackgroundAgentRunner |
 | Health | `/health` | - |
 
 **Location**: `src/letta_starter/server/`
@@ -223,17 +224,22 @@ src/letta_starter/
 │   ├── default.py       # Factory functions, AgentRegistry
 │   └── templates.py     # AgentTemplate, TUTOR_TEMPLATE
 │
+├── background/          # Background agent system
+│   ├── schema.py        # TOML config schemas (CourseConfig, etc.)
+│   └── runner.py        # BackgroundAgentRunner execution engine
+│
 ├── config/              # Configuration
 │   └── settings.py      # Settings, ServiceSettings
 │
-├── honcho/              # Message persistence
+├── honcho/              # Message persistence + dialectic
 │   ├── __init__.py      # Exports HonchoClient
-│   └── client.py        # HonchoClient, create_persist_task
+│   └── client.py        # HonchoClient, query_dialectic
 │
 ├── memory/              # Memory system
 │   ├── blocks.py        # PersonaBlock, HumanBlock
 │   ├── manager.py       # MemoryManager
-│   └── strategies.py    # Rotation strategies
+│   ├── strategies.py    # Rotation strategies
+│   └── enricher.py      # MemoryEnricher for external updates
 │
 ├── observability/       # Logging and tracing
 │   ├── logging.py       # Structured logging
@@ -246,11 +252,20 @@ src/letta_starter/
 ├── server/              # HTTP service
 │   ├── main.py          # FastAPI app
 │   ├── agents.py        # AgentManager
+│   ├── background.py    # Background agent endpoints
 │   ├── schemas.py       # Request/response models
 │   ├── tracing.py       # Langfuse integration
 │   └── strategy/        # Strategy agent subsystem
 │
+├── tools/               # Agent tools
+│   ├── dialectic.py     # query_honcho tool
+│   └── memory.py        # edit_memory_block tool
+│
 └── main.py              # CLI entry point
+
+config/
+└── courses/             # TOML course configurations
+    └── college-essay.toml
 ```
 
 ## Design Decisions
@@ -291,4 +306,7 @@ A shared RAG agent for:
 - [[HTTP-Service]] - Endpoint details
 - [[Memory-System]] - Memory architecture
 - [[Pipeline]] - OpenWebUI integration
+- [[Background-Agents]] - Background agent system
+- [[Agent-Tools]] - Agent tool implementations
+- [[Honcho]] - Honcho integration and dialectic queries
 - [[Letta-SDK]] - SDK patterns

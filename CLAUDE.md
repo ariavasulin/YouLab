@@ -19,14 +19,17 @@ OpenWebUI → Pipeline → HTTP Service → Letta Server → Claude API
 ```
 src/letta_starter/       # Python backend
   agents/                # BaseAgent + factory functions + AgentRegistry + templates
-  memory/                # Memory blocks, rotation strategies, manager
+  memory/                # Memory blocks, rotation strategies, manager, enricher
   pipelines/             # OpenWebUI Pipe integration
   server/                # FastAPI HTTP service (agent management, chat endpoints)
     strategy/            # RAG-enabled strategy agent (project knowledge queries)
-  honcho/                # Honcho client for message persistence
+  honcho/                # Honcho client for message persistence + dialectic queries
+  tools/                 # Agent tools (query_honcho, edit_memory_block)
+  background/            # Background agent runner + TOML config schemas
   observability/         # Logging, metrics, tracing (Langfuse)
   config/                # Pydantic settings from env
   main.py                # CLI entry point
+config/courses/          # TOML course configs (background agents, triggers)
 tests/                   # Pytest suite (including tests/test_server/)
 ```
 
@@ -75,16 +78,23 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/memory/blocks.py` - PersonaBlock/HumanBlock schemas with serialization
 - `src/letta_starter/memory/strategies.py` - Context rotation (Aggressive/Preservative/Adaptive)
 - `src/letta_starter/memory/manager.py` - Memory lifecycle orchestration
+- `src/letta_starter/memory/enricher.py` - MemoryEnricher for external memory updates with audit trailing
 - `src/letta_starter/agents/base.py` - BaseAgent with integrated memory + tracing
 - `src/letta_starter/agents/default.py` - Factory functions + AgentRegistry
 - `src/letta_starter/agents/templates.py` - AgentTemplate + TUTOR_TEMPLATE for essay coaching
-- `src/letta_starter/server/main.py` - FastAPI app with /health, /agents, /chat endpoints
+- `src/letta_starter/server/main.py` - FastAPI app with /health, /agents, /chat, /background endpoints
 - `src/letta_starter/server/agents.py` - AgentManager for per-user Letta agents
+- `src/letta_starter/server/background.py` - Background agent HTTP endpoints
 - `src/letta_starter/server/strategy/manager.py` - StrategyManager singleton for RAG queries
 - `src/letta_starter/server/strategy/router.py` - FastAPI router: /strategy/documents, /ask, /health
 - `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
 - `src/letta_starter/config/settings.py` - Pydantic settings from environment
-- `src/letta_starter/honcho/client.py` - HonchoClient for message persistence
+- `src/letta_starter/honcho/client.py` - HonchoClient for message persistence + dialectic queries
+- `src/letta_starter/tools/dialectic.py` - query_honcho tool for in-conversation ToM queries
+- `src/letta_starter/tools/memory.py` - edit_memory_block tool for agent-driven memory updates
+- `src/letta_starter/background/schema.py` - Pydantic schemas for TOML course configuration
+- `src/letta_starter/background/runner.py` - BackgroundAgentRunner execution engine
+- `config/courses/college-essay.toml` - Example course configuration with background agents
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
 
