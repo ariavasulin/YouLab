@@ -19,25 +19,18 @@ A complete system where:
 ## Current Status
 
 ```
-                    ┌──────────────────────────┐
-                    │        Completed         │
-                    └──────────────────────────┘
-                               │
-                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Phase 1: HTTP Service                                          │
-│  ════════════════════                                           │
-│  ✓ FastAPI server with /health, /agents, /chat endpoints        │
-│  ✓ SSE streaming with proper event types                        │
-│  ✓ AgentManager with caching                                    │
-│  ✓ Agent template system                                        │
-│  ✓ Strategy agent with RAG                                      │
-│  ✓ Langfuse tracing integration                                 │
+│                         Completed                                │
+├─────────────────────────────────────────────────────────────────┤
+│  Phase 1: HTTP Service ✓                                        │
+│  Phase 2: User Identity ✓ (absorbed into Phase 1)               │
+│  Phase 3: Honcho Integration ✓                                  │
+│  Phase 4: Thread Context ✓                                      │
 └─────────────────────────────────────────────────────────────────┘
                                │
                                ▼
                     ┌──────────────────────────┐
-                    │        In Progress       │
+                    │     Next: Phase 5, 6     │
                     └──────────────────────────┘
 ```
 
@@ -48,9 +41,9 @@ A complete system where:
 | Phase | Name | Status | Dependencies |
 |-------|------|--------|--------------|
 | 1 | HTTP Service | **Complete** | - |
-| 2 | User Identity & Routing | Planned | Phase 1 |
-| 3 | Honcho Integration | Planned | Phase 2 |
-| 4 | Thread Context | Planned | Phase 2 |
+| 2 | User Identity & Routing | **Complete** (absorbed into Phase 1) | Phase 1 |
+| 3 | Honcho Integration | **Complete** | Phase 1 |
+| 4 | Thread Context | **Complete** | Phase 1 |
 | 5 | Curriculum Parser | Planned | Phase 4 |
 | 6 | Background Worker | Planned | Phase 3 |
 | 7 | Student Onboarding | Planned | Phase 5 |
@@ -58,19 +51,17 @@ A complete system where:
 ### Dependency Graph
 
 ```
-Phase 1: HTTP Service
+Phase 1: HTTP Service (includes Phase 2)
     │
-    └── Phase 2: User Identity
+    ├── Phase 3: Honcho ──────┐
+    │       │                 │
+    │       └── Phase 6: Background Worker
+    │
+    └── Phase 4: Thread Context
             │
-            ├── Phase 3: Honcho ──────┐
-            │       │                 │
-            │       └── Phase 6: Background Worker
-            │
-            └── Phase 4: Thread Context
+            └── Phase 5: Curriculum
                     │
-                    └── Phase 5: Curriculum
-                            │
-                            └── Phase 7: Onboarding
+                    └── Phase 7: Onboarding
 ```
 
 ---
@@ -98,75 +89,80 @@ Convert LettaStarter from a library to an HTTP service.
 
 ---
 
-## Phase 2: User Identity & Routing
+## Phase 2: User Identity & Routing (Complete)
 
 Ensure each student gets their own persistent agent.
 
-### Goals
+> **Note**: This phase was absorbed into Phase 1 during implementation.
 
-- First-interaction detection
-- Onboarding trigger hooks
-- Memory block extensions for course data
+### Deliverables
 
-### Remaining Work
+- [x] User ID extraction (`__user__["id"]`)
+- [x] Agent creation and lookup
+- [x] Agent caching for fast lookups
+- [x] Per-user agent naming convention (`youlab_{user_id}_{agent_type}`)
 
-Phase 1 now handles most of this:
-- User ID extraction (`__user__["id"]`)
-- Agent creation and lookup
-- Caching
+### Deferred to Future Phases
 
-Phase 2 adds:
-- First-interaction detection
-- Course-specific memory fields
+- First-interaction detection (Phase 7: Onboarding)
+- Course-specific memory fields (Phase 4: Thread Context)
 
 ---
 
-## Phase 3: Honcho Integration
+## Phase 3: Honcho Integration (Complete)
 
 Persist all messages to Honcho for theory-of-mind modeling.
 
-### Goals
+### Deliverables
 
-- Every message flows through Honcho
-- Dialectic queries inform agent behavior
-- Working representation captures student model
+- [x] HonchoClient with lazy initialization
+- [x] Fire-and-forget message persistence
+- [x] Integration with `/chat` endpoint
+- [x] Integration with `/chat/stream` endpoint
+- [x] Health endpoint reports Honcho status
+- [x] Graceful degradation when Honcho unavailable
+- [x] Configuration via environment variables
+- [x] Unit and integration tests
 
-### Components to Add
+### Key Files
 
-```
-src/letta_starter/honcho/
-├── client.py     # Honcho API wrapper
-└── __init__.py
-```
+- `src/letta_starter/honcho/client.py`
+- `src/letta_starter/config/settings.py` (ServiceSettings)
+- `src/letta_starter/server/main.py` (lifespan, endpoints)
+- `tests/test_honcho.py`
+- `tests/test_server_honcho.py`
 
-### New Environment Variables
+### What's NOT Included (Future Work)
 
-```env
-HONCHO_WORKSPACE_ID=youlab
-HONCHO_API_KEY=
-HONCHO_ENVIRONMENT=production
-```
+- Dialectic queries from Honcho (Phase 6)
+- Working representation updates (Phase 6)
+- ToM-informed agent behavior (Phase 6)
 
 ---
 
-## Phase 4: Thread Context Management
+## Phase 4: Thread Context (Complete)
 
-Parse chat titles to determine module/lesson context.
+Chat title extraction and management for thread context.
 
-### Goals
+### Deliverables
 
-- Parse "Module 1 / Lesson 2" format
-- Update memory blocks when context changes
-- Handle "student went back" scenario
+- [x] Chat title extraction from OpenWebUI database (`_get_chat_title`)
+- [x] Chat title passed to HTTP service in requests
+- [x] Chat title stored in Honcho as message metadata
+- [x] Chat title rename capability (`_set_chat_title`)
+- [x] Unit tests for title operations
 
-### Components to Add
+### Key Files
 
-```
-src/letta_starter/context/
-├── parser.py    # Title parsing
-├── cache.py     # Context caching
-└── updater.py   # Memory block updates
-```
+- `src/letta_starter/pipelines/letta_pipe.py` (`_get_chat_title`, `_set_chat_title`)
+- `tests/test_pipe.py` (`TestGetChatTitle`, `TestSetChatTitle`)
+
+### What's NOT Included (Simplified Scope)
+
+Original plan included complex title parsing ("Module 1 / Lesson 2" format), context caching, and memory block updates. These were deferred as:
+- 1:1 OpenWebUI→Honcho thread mapping simplifies architecture
+- Primary course uses single thread
+- Title metadata already flows through system
 
 ---
 

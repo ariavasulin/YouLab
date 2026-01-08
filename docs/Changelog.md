@@ -11,6 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Thread Context Management**: Chat title operations for thread context
+  - `_set_chat_title()` method to rename chats programmatically
+  - Uses OpenWebUI's `Chats.update_chat_title_by_id()` API
+  - Unit tests for title get/set operations
+- **Honcho Integration**: Message persistence for theory-of-mind modeling
+  - `HonchoClient` for async message persistence
+  - Fire-and-forget pattern for non-blocking chat
+  - Health endpoint reports Honcho connection status
+  - Configuration via `YOULAB_SERVICE_HONCHO_*` environment variables
+  - Graceful degradation when Honcho unavailable
 - Documentation site using Docsify
 - Complete API reference
 - Development and testing guides

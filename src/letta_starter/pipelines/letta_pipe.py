@@ -70,6 +70,32 @@ class Pipe:
                 print(f"Failed to get chat title: {e}")
             return None
 
+    def _set_chat_title(self, chat_id: str | None, title: str) -> bool:
+        """
+        Set chat title in OpenWebUI database.
+
+        Args:
+            chat_id: The chat ID to update
+            title: The new title to set
+
+        Returns:
+            True if successful, False otherwise
+
+        """
+        if not chat_id or chat_id.startswith("local:"):
+            return False
+        try:
+            from open_webui.models.chats import Chats
+
+            result = Chats.update_chat_title_by_id(chat_id, title)
+            return result is not None
+        except ImportError:
+            return False
+        except Exception as e:
+            if self.valves.ENABLE_LOGGING:
+                print(f"Failed to set chat title: {e}")
+            return False
+
     async def _ensure_agent_exists(
         self,
         client: httpx.AsyncClient,
