@@ -302,6 +302,88 @@ Check strategy agent status.
 
 ---
 
+## Background
+
+### GET /background/agents
+
+List configured background agents.
+
+**Response**:
+```json
+[
+  {
+    "id": "insight-harvester",
+    "name": "Student Insight Harvester",
+    "course_id": "college-essay",
+    "enabled": true,
+    "triggers": {
+      "schedule": "0 3 * * *",
+      "idle_enabled": false,
+      "manual": true
+    },
+    "query_count": 3
+  }
+]
+```
+
+---
+
+### POST /background/{agent_id}/run
+
+Manually trigger a background agent.
+
+**Request** (optional):
+```json
+{
+  "user_ids": ["user123"]
+}
+```
+
+| Field | Type | Required |
+|-------|------|----------|
+| `user_ids` | array | No |
+
+**Response**:
+```json
+{
+  "agent_id": "insight-harvester",
+  "started_at": "2025-01-08T03:00:00Z",
+  "completed_at": "2025-01-08T03:05:00Z",
+  "users_processed": 25,
+  "queries_executed": 75,
+  "enrichments_applied": 68,
+  "error_count": 7,
+  "errors": []
+}
+```
+
+**Errors**:
+- `404` - Agent not found
+- `500` - System not initialized
+
+---
+
+### POST /background/config/reload
+
+Reload TOML configuration.
+
+**Query Parameters**:
+| Parameter | Type | Default |
+|-----------|------|---------|
+| `config_dir` | string | `config/courses` |
+
+**Response**:
+```json
+{
+  "success": true,
+  "courses_loaded": 1,
+  "course_ids": ["college-essay"],
+  "message": "Configuration reloaded successfully"
+}
+```
+
+---
+
 ## Error Responses
 
 All errors follow this format:
@@ -357,4 +439,5 @@ curl -X POST http://localhost:8100/strategy/documents \
 
 - [[HTTP-Service]] - Implementation details
 - [[Schemas]] - Request/response models
+- [[Background-Agents]] - Background agent system
 - [[Quickstart]] - Getting started

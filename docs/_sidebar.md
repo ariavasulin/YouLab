@@ -7,6 +7,8 @@
   - [HTTP Service](HTTP-Service.md)
   - [Memory System](Memory-System.md)
   - [Agent System](Agent-System.md)
+  - [Agent Tools](Agent-Tools.md)
+  - [Background Agents](Background-Agents.md)
   - [Pipeline Integration](Pipeline.md)
   - [Strategy Agent](Strategy-Agent.md)
   - [Honcho Integration](Honcho.md)
