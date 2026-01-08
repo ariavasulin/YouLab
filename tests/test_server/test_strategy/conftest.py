@@ -29,8 +29,8 @@ def mock_strategy_manager(mock_letta_client):
     from letta_starter.server.strategy import StrategyManager
 
     manager = StrategyManager.__new__(StrategyManager)
-    manager._client = mock_letta_client  # noqa: SLF001
-    manager._agent_id = "strategy-agent-id"  # noqa: SLF001
+    manager._client = mock_letta_client
+    manager._agent_id = "strategy-agent-id"
     manager.letta_base_url = "http://localhost:8283"
     return manager
 
@@ -44,8 +44,8 @@ def strategy_test_client(mock_strategy_manager):
 
     # Set up agent_manager for the app
     mock_agent_manager = AgentManager.__new__(AgentManager)
-    mock_agent_manager._client = MagicMock()  # noqa: SLF001
-    mock_agent_manager._cache = {}  # noqa: SLF001
+    mock_agent_manager._client = MagicMock()
+    mock_agent_manager._cache = {}
     mock_agent_manager.letta_base_url = "http://localhost:8283"
     app.state.agent_manager = mock_agent_manager
 

@@ -40,6 +40,7 @@ Returns service health status and Letta connection state.
 {
   "status": "ok",
   "letta_connected": true,
+  "honcho_connected": true,
   "version": "0.1.0"
 }
 ```
@@ -48,6 +49,8 @@ Returns service health status and Letta connection state.
 |--------|---------|
 | `ok` | Service healthy, Letta connected |
 | `degraded` | Service running, Letta unavailable |
+
+> **Note**: `honcho_connected` indicates whether Honcho message persistence is available. The service functions without Honcho (messages won't be persisted for ToM analysis).
 
 ---
 

@@ -136,6 +136,12 @@ langfuse_enabled: bool = True
 langfuse_public_key: str | None = None
 langfuse_secret_key: str | None = None
 langfuse_host: str = "https://cloud.langfuse.com"
+
+# Honcho (message persistence)
+honcho_enabled: bool = True
+honcho_workspace_id: str = "youlab"
+honcho_api_key: str | None = None
+honcho_environment: str = "demo"
 ```
 
 ---

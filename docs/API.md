@@ -27,6 +27,7 @@ Check service health and Letta connection.
 {
   "status": "ok",
   "letta_connected": true,
+  "honcho_connected": true,
   "version": "0.1.0"
 }
 ```
@@ -35,6 +36,7 @@ Check service health and Letta connection.
 |-------|------|-------------|
 | `status` | string | `"ok"` or `"degraded"` |
 | `letta_connected` | boolean | Letta server reachable |
+| `honcho_connected` | boolean | Honcho service reachable |
 | `version` | string | Service version (e.g., `"0.1.0"`) |
 
 ---

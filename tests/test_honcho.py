@@ -14,26 +14,26 @@ class TestHonchoClient:
         """Test peer ID generation."""
         client = HonchoClient(workspace_id="test", environment="demo")
         # Access private method for testing - noqa: SLF001
-        assert client._get_student_peer_id("user123") == "student_user123"  # noqa: SLF001
+        assert client._get_student_peer_id("user123") == "student_user123"
 
     def test_session_id_generation(self) -> None:
         """Test session ID generation."""
         client = HonchoClient(workspace_id="test", environment="demo")
         # Access private method for testing - noqa: SLF001
-        assert client._get_session_id("chat456") == "chat_chat456"  # noqa: SLF001
+        assert client._get_session_id("chat456") == "chat_chat456"
 
     @patch("honcho.Honcho")
     def test_client_lazy_init(self, mock_honcho_class: MagicMock) -> None:
         """Test that Honcho client is lazily initialized."""
         client = HonchoClient(workspace_id="test", environment="demo")
         # Access private attribute for testing - noqa: SLF001
-        assert client._client is None  # noqa: SLF001
+        assert client._client is None
 
         # Access client property
         _ = client.client
 
         mock_honcho_class.assert_called_once()
-        assert client._client is not None  # noqa: SLF001
+        assert client._client is not None
 
     @patch("honcho.Honcho")
     def test_production_client_requires_api_key(self, mock_honcho_class: MagicMock) -> None:
@@ -93,8 +93,8 @@ class TestHonchoClientPersistence:
         # Mock the internal client to raise an exception
         mock_honcho = MagicMock()
         mock_honcho.peer.side_effect = Exception("Connection failed")
-        client._client = mock_honcho  # noqa: SLF001
-        client._initialized = True  # noqa: SLF001
+        client._client = mock_honcho
+        client._initialized = True
 
         # Should not raise
         await client.persist_user_message(
@@ -113,8 +113,8 @@ class TestHonchoClientPersistence:
         mock_session = MagicMock()
         mock_honcho.peer.return_value = mock_peer
         mock_honcho.session.return_value = mock_session
-        client._client = mock_honcho  # noqa: SLF001
-        client._initialized = True  # noqa: SLF001
+        client._client = mock_honcho
+        client._initialized = True
 
         await client.persist_agent_message(
             user_id="user123",

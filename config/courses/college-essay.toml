@@ -1,0 +1,53 @@
+# College Essay Coaching Course Configuration
+
+id = "college-essay"
+name = "College Essay Coaching"
+
+# =============================================================================
+# Background Agent: Insight Harvester
+# =============================================================================
+
+[[background_agents]]
+id = "insight-harvester"
+name = "Student Insight Harvester"
+enabled = true
+agent_types = ["tutor"]
+user_filter = "all"
+batch_size = 50
+
+[background_agents.triggers]
+schedule = "0 3 * * *"  # 3 AM daily
+manual = true
+
+[background_agents.triggers.idle]
+enabled = false  # Disabled for MVP
+threshold_minutes = 30
+cooldown_minutes = 60
+
+# Query: Learning Style
+[[background_agents.queries]]
+id = "learning_style"
+question = "What learning style works best for this student? Do they prefer examples, theory, or hands-on practice?"
+session_scope = "all"
+target_block = "human"
+target_field = "context_notes"
+merge_strategy = "append"
+
+# Query: Engagement Patterns
+[[background_agents.queries]]
+id = "engagement_patterns"
+question = "How engaged is this student? What topics or activities seem to motivate them?"
+session_scope = "recent"
+recent_limit = 5
+target_block = "human"
+target_field = "facts"
+merge_strategy = "append"
+
+# Query: Communication Style
+[[background_agents.queries]]
+id = "communication_style"
+question = "How should I adjust my communication style for this student? What tone resonates best?"
+session_scope = "all"
+target_block = "persona"
+target_field = "constraints"
+merge_strategy = "llm_diff"

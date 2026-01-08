@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI, HTTPException, status
@@ -11,6 +12,8 @@ from letta_starter.config.settings import ServiceSettings
 from letta_starter.honcho import HonchoClient
 from letta_starter.honcho.client import create_persist_task
 from letta_starter.server.agents import AgentManager
+from letta_starter.server.background import initialize_background
+from letta_starter.server.background import router as background_router
 from letta_starter.server.schemas import (
     AgentListResponse,
     AgentResponse,
@@ -23,6 +26,8 @@ from letta_starter.server.schemas import (
 from letta_starter.server.strategy import init_strategy_manager
 from letta_starter.server.strategy import router as strategy_router
 from letta_starter.server.tracing import trace_chat, trace_generation
+from letta_starter.tools.dialectic import set_honcho_client, set_user_context
+from letta_starter.tools.memory import set_letta_client
 
 log = structlog.get_logger()
 settings = ServiceSettings()
@@ -56,6 +61,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         log.warning("letta_not_available_at_startup", error=str(e))
 
+    # Initialize tool globals for agent-callable tools
+    set_letta_client(app.state.agent_manager.client)
+    if app.state.honcho_client:
+        set_honcho_client(app.state.honcho_client)
+    log.info("tool_globals_initialized")
+
+    # Initialize background agent system
+    initialize_background(
+        letta_client=app.state.agent_manager.client,
+        honcho_client=app.state.honcho_client,
+        config_dir=Path("config/courses"),
+    )
+
     yield
 
     # Shutdown
@@ -69,8 +87,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Include strategy router
+# Include routers
 app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
+app.include_router(background_router)
 
 
 def get_agent_manager() -> AgentManager:
@@ -194,6 +213,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
     user_id = info.get("user_id", "unknown")
     agent_type = info.get("agent_type", "tutor")
 
+    # Set user context for agent tools
+    set_user_context(agent_id=request.agent_id, user_id=user_id)
+
     # Persist user message to Honcho (fire-and-forget)
     if request.chat_id:
         create_persist_task(
@@ -279,6 +301,9 @@ async def chat_stream(request: StreamChatRequest) -> StreamingResponse:
 
     user_id = info.get("user_id", "unknown")
     agent_type = info.get("agent_type", "tutor")
+
+    # Set user context for agent tools
+    set_user_context(agent_id=request.agent_id, user_id=user_id)
 
     # Persist user message to Honcho (fire-and-forget)
     if request.chat_id:

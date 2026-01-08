@@ -58,19 +58,19 @@ class TestGetChatTitle:
     def test_no_chat_id(self):
         """Test returns None when no chat_id."""
         pipeline = Pipe()
-        result = pipeline._get_chat_title(None)  # noqa: SLF001
+        result = pipeline._get_chat_title(None)
         assert result is None
 
     def test_local_chat_id(self):
         """Test returns None for local: prefixed IDs."""
         pipeline = Pipe()
-        result = pipeline._get_chat_title("local:some-id")  # noqa: SLF001
+        result = pipeline._get_chat_title("local:some-id")
         assert result is None
 
     def test_openwebui_import_error(self):
         """Test handles ImportError gracefully."""
         pipeline = Pipe()
-        result = pipeline._get_chat_title("some-chat-id")  # noqa: SLF001
+        result = pipeline._get_chat_title("some-chat-id")
         # Without OpenWebUI, should return None
         assert result is None
 
@@ -81,19 +81,19 @@ class TestSetChatTitle:
     def test_no_chat_id(self):
         """Test returns False when no chat_id."""
         pipeline = Pipe()
-        result = pipeline._set_chat_title(None, "New Title")  # noqa: SLF001
+        result = pipeline._set_chat_title(None, "New Title")
         assert result is False
 
     def test_local_chat_id(self):
         """Test returns False for local: prefixed IDs."""
         pipeline = Pipe()
-        result = pipeline._set_chat_title("local:some-id", "New Title")  # noqa: SLF001
+        result = pipeline._set_chat_title("local:some-id", "New Title")
         assert result is False
 
     def test_openwebui_import_error(self):
         """Test handles ImportError gracefully."""
         pipeline = Pipe()
-        result = pipeline._set_chat_title("some-chat-id", "New Title")  # noqa: SLF001
+        result = pipeline._set_chat_title("some-chat-id", "New Title")
         # Without OpenWebUI, should return False
         assert result is False
 
@@ -105,7 +105,7 @@ class TestSetChatTitle:
         mock_chats.update_chat_title_by_id.return_value = MagicMock()  # Non-None
 
         with patch.dict("sys.modules", {"open_webui.models.chats": MagicMock(Chats=mock_chats)}):
-            result = pipeline._set_chat_title("chat-123", "New Title")  # noqa: SLF001
+            result = pipeline._set_chat_title("chat-123", "New Title")
 
         assert result is True
         mock_chats.update_chat_title_by_id.assert_called_once_with("chat-123", "New Title")
@@ -118,7 +118,7 @@ class TestSetChatTitle:
         mock_chats.update_chat_title_by_id.return_value = None
 
         with patch.dict("sys.modules", {"open_webui.models.chats": MagicMock(Chats=mock_chats)}):
-            result = pipeline._set_chat_title("chat-123", "New Title")  # noqa: SLF001
+            result = pipeline._set_chat_title("chat-123", "New Title")
 
         assert result is False
 
@@ -139,7 +139,7 @@ class TestEnsureAgentExists:
         }
         mock_client.get.return_value = mock_response
 
-        result = await pipeline._ensure_agent_exists(mock_client, "user123")  # noqa: SLF001
+        result = await pipeline._ensure_agent_exists(mock_client, "user123")
 
         assert result == "existing-id"
 
@@ -162,7 +162,7 @@ class TestEnsureAgentExists:
         mock_post_response.json.return_value = {"agent_id": "new-agent-id"}
         mock_client.post.return_value = mock_post_response
 
-        result = await pipeline._ensure_agent_exists(mock_client, "user123", "Alice")  # noqa: SLF001
+        result = await pipeline._ensure_agent_exists(mock_client, "user123", "Alice")
 
         assert result == "new-agent-id"
 
@@ -334,7 +334,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
         mock_emitter = AsyncMock()
 
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             '{"type": "status", "content": "Thinking..."}',
             mock_emitter,
         )
@@ -351,7 +351,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
         mock_emitter = AsyncMock()
 
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             '{"type": "message", "content": "Hello there!"}',
             mock_emitter,
         )
@@ -367,7 +367,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
         mock_emitter = AsyncMock()
 
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             '{"type": "done"}',
             mock_emitter,
         )
@@ -383,7 +383,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
         mock_emitter = AsyncMock()
 
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             '{"type": "error", "message": "Something went wrong"}',
             mock_emitter,
         )
@@ -399,7 +399,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
         mock_emitter = AsyncMock()
 
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             "not valid json",
             mock_emitter,
         )
@@ -414,7 +414,7 @@ class TestHandleSSEEvent:
         pipeline = Pipe()
 
         # Should not raise
-        await pipeline._handle_sse_event(  # noqa: SLF001
+        await pipeline._handle_sse_event(
             '{"type": "message", "content": "test"}',
             None,
         )

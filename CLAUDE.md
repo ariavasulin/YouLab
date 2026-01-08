@@ -5,12 +5,14 @@ Course delivery platform with personalized AI tutoring. First course: college es
 ## Current Stack
 
 ```
-OpenWebUI → Pipeline (embedded in OpenWebUI) → Letta Server → Claude API
+OpenWebUI → Pipeline → HTTP Service → Letta Server → Claude API
+                            ↘ Honcho (message persistence)
 ```
 
 - **OpenWebUI**: Chat frontend with Pipe extension system
 - **LettaStarter**: Python library providing memory management, observability, and agent factories
 - **Letta**: Agent framework with persistent memory (currently single shared agent)
+- **Honcho**: Message persistence for theory-of-mind modeling
 
 ## Project Structure
 
@@ -21,6 +23,7 @@ src/letta_starter/       # Python backend
   pipelines/             # OpenWebUI Pipe integration
   server/                # FastAPI HTTP service (agent management, chat endpoints)
     strategy/            # RAG-enabled strategy agent (project knowledge queries)
+  honcho/                # Honcho client for message persistence
   observability/         # Logging, metrics, tracing (Langfuse)
   config/                # Pydantic settings from env
   main.py                # CLI entry point
@@ -30,6 +33,8 @@ tests/                   # Pytest suite (including tests/test_server/)
 ## Documentation
 
 /docs is religiously maintained and the unequivocal source of truth for anything related to this project. When answering questions and working on this project, consult the documentation here first and with highest precedence. 
+
+Assume thoughts it generally more up to date than anything in /thoughts unless told otherwise.
 
 ## Commands
 
@@ -79,12 +84,13 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/server/strategy/router.py` - FastAPI router: /strategy/documents, /ask, /health
 - `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
 - `src/letta_starter/config/settings.py` - Pydantic settings from environment
+- `src/letta_starter/honcho/client.py` - HonchoClient for message persistence
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
 
 ## Roadmap
 
-Target architecture adds Honcho integration and curriculum-driven tutoring:
+Current architecture with Honcho integration:
 
 ```
 OpenWebUI (Pipe) → LettaStarter HTTP Service → Letta Server → Claude API

@@ -1,18 +1,27 @@
 """Agent templates for YouLab."""
 
+from collections.abc import Callable
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from letta_starter.memory.blocks import HumanBlock, PersonaBlock
+from letta_starter.tools import edit_memory_block, query_honcho
 
 
 class AgentTemplate(BaseModel):
     """Template for creating agents of a specific type."""
+
+    model_config = {"arbitrary_types_allowed": True}
 
     type_id: str = Field(..., description="Unique identifier for this template")
     display_name: str = Field(..., description="Human-readable name")
     description: str = Field(default="", description="Template description")
     persona: PersonaBlock = Field(..., description="Persona block for the agent")
     human: HumanBlock = Field(default_factory=HumanBlock, description="Initial human block")
+    tools: list[Callable[..., Any]] = Field(
+        default_factory=list, description="Tool functions available to this agent"
+    )
 
 
 # Default tutor template for college essay coaching
@@ -44,6 +53,7 @@ TUTOR_TEMPLATE = AgentTemplate(
         ],
     ),
     human=HumanBlock(),  # Empty, filled during onboarding
+    tools=[query_honcho, edit_memory_block],  # Agent-callable tools
 )
 
 

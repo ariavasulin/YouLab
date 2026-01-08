@@ -99,6 +99,15 @@ All prefixed with `YOULAB_SERVICE_`:
 | `YOULAB_SERVICE_LANGFUSE_SECRET_KEY` | `null` | Langfuse secret key |
 | `YOULAB_SERVICE_LANGFUSE_HOST` | `https://cloud.langfuse.com` | Langfuse host |
 
+### Honcho Message Persistence
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `YOULAB_SERVICE_HONCHO_ENABLED` | `true` | Enable Honcho message persistence |
+| `YOULAB_SERVICE_HONCHO_WORKSPACE_ID` | `youlab` | Honcho workspace identifier |
+| `YOULAB_SERVICE_HONCHO_API_KEY` | `null` | Honcho API key (required for production) |
+| `YOULAB_SERVICE_HONCHO_ENVIRONMENT` | `demo` | Environment: `demo`, `local`, or `production` |
+
 ---
 
 ## Example Configurations
@@ -128,6 +137,11 @@ SERVICE_NAME=youlab-production
 LANGFUSE_ENABLED=true
 LANGFUSE_PUBLIC_KEY=pk-lf-xxx
 LANGFUSE_SECRET_KEY=sk-lf-xxx
+
+# Honcho (Theory of Mind)
+YOULAB_SERVICE_HONCHO_ENABLED=true
+YOULAB_SERVICE_HONCHO_ENVIRONMENT=production
+YOULAB_SERVICE_HONCHO_API_KEY=your-honcho-api-key
 
 YOULAB_SERVICE_HOST=0.0.0.0
 YOULAB_SERVICE_PORT=8100

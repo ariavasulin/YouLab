@@ -1,8 +1,10 @@
-"""Honcho client for message persistence."""
+"""Honcho client for message persistence and dialectic queries."""
 
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import structlog
@@ -13,6 +15,25 @@ if TYPE_CHECKING:
     from honcho import Honcho
 
 log = structlog.get_logger()
+
+
+class SessionScope(str, Enum):
+    """Scope for dialectic queries."""
+
+    ALL = "all"  # All sessions for this user
+    RECENT = "recent"  # Last N sessions
+    CURRENT = "current"  # Current/active session only
+    SPECIFIC = "specific"  # Explicit session ID
+
+
+@dataclass
+class DialecticResponse:
+    """Structured response from Honcho dialectic."""
+
+    insight: str
+    session_scope: SessionScope
+    query: str
+
 
 # Keep references to background tasks to prevent garbage collection
 _background_tasks: set[Task[None]] = set()
@@ -215,6 +236,75 @@ class HonchoClient:
         except Exception as e:
             log.warning("honcho_connection_check_failed", error=str(e))
             return False
+
+    async def query_dialectic(
+        self,
+        user_id: str,
+        question: str,
+        session_scope: SessionScope = SessionScope.ALL,
+        session_id: str | None = None,
+        recent_limit: int = 5,
+    ) -> DialecticResponse | None:
+        """
+        Query Honcho dialectic for insights about a student.
+
+        Args:
+            user_id: Student identifier
+            question: Natural language question
+            session_scope: Which sessions to include (currently ALL is supported)
+            session_id: Specific session ID (reserved for future use)
+            recent_limit: Number of recent sessions (reserved for future use)
+
+        Returns:
+            DialecticResponse with insight, or None if unavailable
+
+        """
+        if self.client is None:
+            return None
+
+        try:
+            peer = self.client.peer(self._get_student_peer_id(user_id))
+
+            # Honcho peer.chat() queries across all conversation history for this peer
+            # Session-scoped filtering will be added when Honcho SDK supports it
+            response = peer.chat(question)
+
+            # Handle different return types from peer.chat()
+            if response is None:
+                log.warning(
+                    "honcho_dialectic_empty",
+                    user_id=user_id,
+                    question_preview=question[:50],
+                )
+                return None
+
+            # Extract string content from response
+            insight: str
+            if isinstance(response, str):
+                insight = response
+            else:
+                # DialecticStreamResponse has a 'content' attribute
+                insight = str(getattr(response, "content", str(response)))
+
+            log.info(
+                "honcho_dialectic_queried",
+                user_id=user_id,
+                question_preview=question[:50],
+                session_scope=session_scope.value,
+            )
+
+            return DialecticResponse(
+                insight=insight,
+                session_scope=session_scope,
+                query=question,
+            )
+        except Exception as e:
+            log.warning(
+                "honcho_dialectic_failed",
+                error=str(e),
+                user_id=user_id,
+            )
+            return None
 
 
 def create_persist_task(

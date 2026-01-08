@@ -42,8 +42,8 @@ def mock_agent_manager(mock_letta_client):
     from letta_starter.server.agents import AgentManager
 
     manager = AgentManager.__new__(AgentManager)
-    manager._client = mock_letta_client  # noqa: SLF001
-    manager._cache = {}  # noqa: SLF001
+    manager._client = mock_letta_client
+    manager._cache = {}
     manager.letta_base_url = "http://localhost:8283"
     return manager
 
@@ -60,8 +60,8 @@ def test_client(mock_agent_manager):
 
     # Set up a mock strategy manager using dependency override
     mock_strategy = StrategyManager.__new__(StrategyManager)
-    mock_strategy._client = MagicMock()  # noqa: SLF001
-    mock_strategy._agent_id = "strategy-agent-id"  # noqa: SLF001
+    mock_strategy._client = MagicMock()
+    mock_strategy._agent_id = "strategy-agent-id"
     mock_strategy.letta_base_url = "http://localhost:8283"
 
     app.dependency_overrides[get_strategy_manager] = lambda: mock_strategy

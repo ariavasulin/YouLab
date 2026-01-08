@@ -83,6 +83,7 @@ class StreamChatRequest(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     letta_connected: bool
+    honcho_connected: bool = False
     version: str = "0.1.0"
 ```
 

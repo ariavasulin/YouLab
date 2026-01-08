@@ -22,7 +22,7 @@ class TestGetLangfuse:
             # Reset singleton
             import letta_starter.server.tracing as tracing_module
 
-            tracing_module._langfuse = None  # noqa: SLF001
+            tracing_module._langfuse = None
 
             result = get_langfuse()
 
@@ -38,7 +38,7 @@ class TestGetLangfuse:
             # Reset singleton
             import letta_starter.server.tracing as tracing_module
 
-            tracing_module._langfuse = None  # noqa: SLF001
+            tracing_module._langfuse = None
 
             result = get_langfuse()
 
@@ -58,7 +58,7 @@ class TestGetLangfuse:
             # Reset singleton
             import letta_starter.server.tracing as tracing_module
 
-            tracing_module._langfuse = None  # noqa: SLF001
+            tracing_module._langfuse = None
 
             get_langfuse()
 
