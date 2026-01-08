@@ -75,6 +75,54 @@ class TestGetChatTitle:
         assert result is None
 
 
+class TestSetChatTitle:
+    """Tests for _set_chat_title method."""
+
+    def test_no_chat_id(self):
+        """Test returns False when no chat_id."""
+        pipeline = Pipe()
+        result = pipeline._set_chat_title(None, "New Title")  # noqa: SLF001
+        assert result is False
+
+    def test_local_chat_id(self):
+        """Test returns False for local: prefixed IDs."""
+        pipeline = Pipe()
+        result = pipeline._set_chat_title("local:some-id", "New Title")  # noqa: SLF001
+        assert result is False
+
+    def test_openwebui_import_error(self):
+        """Test handles ImportError gracefully."""
+        pipeline = Pipe()
+        result = pipeline._set_chat_title("some-chat-id", "New Title")  # noqa: SLF001
+        # Without OpenWebUI, should return False
+        assert result is False
+
+    def test_successful_update(self):
+        """Test returns True when update succeeds."""
+        pipeline = Pipe()
+
+        mock_chats = MagicMock()
+        mock_chats.update_chat_title_by_id.return_value = MagicMock()  # Non-None
+
+        with patch.dict("sys.modules", {"open_webui.models.chats": MagicMock(Chats=mock_chats)}):
+            result = pipeline._set_chat_title("chat-123", "New Title")  # noqa: SLF001
+
+        assert result is True
+        mock_chats.update_chat_title_by_id.assert_called_once_with("chat-123", "New Title")
+
+    def test_update_returns_none(self):
+        """Test returns False when update returns None (chat not found)."""
+        pipeline = Pipe()
+
+        mock_chats = MagicMock()
+        mock_chats.update_chat_title_by_id.return_value = None
+
+        with patch.dict("sys.modules", {"open_webui.models.chats": MagicMock(Chats=mock_chats)}):
+            result = pipeline._set_chat_title("chat-123", "New Title")  # noqa: SLF001
+
+        assert result is False
+
+
 class TestEnsureAgentExists:
     """Tests for _ensure_agent_exists method."""
 
