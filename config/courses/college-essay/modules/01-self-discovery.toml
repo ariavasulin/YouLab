@@ -1,0 +1,110 @@
+# Module 1: Self-Discovery
+#
+# This module helps students explore their identity, values, and experiences
+# as the foundation for authentic essay writing.
+
+[module]
+id = "01-self-discovery"
+name = "Self-Discovery"
+order = 1
+description = "Explore your identity, values, and formative experiences"
+
+# =============================================================================
+# LESSONS
+# =============================================================================
+
+[[lessons]]
+id = "welcome"
+name = "Welcome & Onboarding"
+order = 1
+description = "Introduction to the essay coaching process"
+objectives = [
+    "Learn the student's name and background",
+    "Set expectations for the coaching relationship",
+    "Understand the student's timeline and goals",
+]
+
+[lessons.completion]
+required_fields = ["human.name"]
+min_turns = 3
+
+[lessons.agent]
+opening = "Welcome to YouLab! I'm so excited to help you craft a college essay that truly represents who you are. Before we dive in, I'd love to get to know you a bit. What's your name, and what schools are you most excited about?"
+focus = ["name", "goals", "timeline"]
+guidance = [
+    "Be warm and welcoming",
+    "Ask about their college aspirations",
+    "Understand any deadlines they're working with",
+]
+
+[[lessons]]
+id = "values-exploration"
+name = "Values Exploration"
+order = 2
+description = "Identify core values that drive decision-making"
+objectives = [
+    "Help student articulate their core values",
+    "Connect values to concrete experiences",
+    "Identify potential essay themes",
+]
+
+[lessons.completion]
+min_turns = 5
+min_list_length = { "human.facts" = 2 }
+
+[lessons.agent]
+opening = "Now that we've gotten acquainted, let's dig a little deeper. I want to understand what really matters to you. Think about a time when you felt most like yourself - what were you doing?"
+focus = ["values", "identity", "authenticity"]
+guidance = [
+    "Ask open-ended questions",
+    "Help them articulate abstract values through concrete stories",
+    "Note recurring themes for later",
+]
+
+[[lessons]]
+id = "strengths-inventory"
+name = "Strengths Inventory"
+order = 3
+description = "Identify unique strengths and qualities"
+objectives = [
+    "Help student recognize their unique strengths",
+    "Gather perspectives from different contexts",
+    "Build confidence in what makes them special",
+]
+
+[lessons.completion]
+min_turns = 4
+min_list_length = { "human.facts" = 3 }
+
+[lessons.agent]
+opening = "You've shared some wonderful insights about your values. Now I'd love to explore your strengths. What do your friends or family say you're really good at? And what would you say you're good at that maybe others don't notice as much?"
+focus = ["strengths", "unique qualities", "self-perception"]
+guidance = [
+    "Encourage them to see themselves through others' eyes",
+    "Probe for specific examples",
+    "Help them own their strengths without false modesty",
+]
+
+[[lessons]]
+id = "pivotal-moments"
+name = "Pivotal Moments"
+order = 4
+description = "Explore formative experiences and turning points"
+objectives = [
+    "Identify key moments that shaped who they are",
+    "Understand how they've grown from challenges",
+    "Find stories with emotional depth",
+]
+
+[lessons.completion]
+min_turns = 5
+min_list_length = { "human.context_notes" = 2 }
+
+[lessons.agent]
+opening = "Let's explore some of the moments that have shaped who you are today. Can you think of a time when something didn't go as planned, but you learned something important from it?"
+focus = ["growth", "challenges", "transformation"]
+guidance = [
+    "Create a safe space for vulnerability",
+    "Look for stories with change or growth",
+    "Note moments with strong emotional resonance",
+]

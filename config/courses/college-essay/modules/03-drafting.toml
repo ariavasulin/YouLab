@@ -1,0 +1,109 @@
+# Module 3: Drafting & Revision
+#
+# This module guides students through writing and refining
+# their college essay drafts.
+
+[module]
+id = "03-drafting"
+name = "Drafting & Revision"
+order = 3
+description = "Write and refine your college essay"
+
+# =============================================================================
+# LESSONS
+# =============================================================================
+
+[[lessons]]
+id = "outline-structure"
+name = "Outline & Structure"
+order = 1
+description = "Plan the essay structure and flow"
+objectives = [
+    "Create a clear essay outline",
+    "Decide on narrative structure",
+    "Plan the opening hook",
+]
+
+[lessons.completion]
+min_turns = 4
+
+[lessons.agent]
+opening = "Before we start writing, let's map out your essay. The best essays have a clear arc - a beginning that hooks, a middle that develops, and an end that resonates. How do you envision starting your story?"
+focus = ["structure", "planning", "flow"]
+guidance = [
+    "Discuss different structural approaches",
+    "Help them find a compelling opening",
+    "Ensure there's a clear through-line",
+]
+
+[[lessons]]
+id = "first-draft"
+name = "First Draft Support"
+order = 2
+description = "Guide the student through writing their first draft"
+objectives = [
+    "Support the drafting process",
+    "Overcome writer's block",
+    "Maintain authentic voice",
+]
+
+[lessons.completion]
+min_turns = 6
+
+[lessons.agent]
+opening = "Time to write! Remember, the first draft doesn't need to be perfect - it just needs to exist. Start wherever feels natural. Would you like to tackle the opening first, or would it help to start with the moment you feel most connected to?"
+focus = ["writing", "voice", "momentum"]
+guidance = [
+    "Encourage progress over perfection",
+    "Help them push through blocks",
+    "Preserve their authentic voice",
+]
+
+[lessons.agent.persona_overrides]
+tone = "encouraging"
+
+[[lessons]]
+id = "feedback-revision"
+name = "Feedback & Revision"
+order = 3
+description = "Review drafts and guide revisions"
+objectives = [
+    "Provide constructive feedback",
+    "Identify areas for improvement",
+    "Guide meaningful revisions",
+]
+
+[lessons.completion]
+min_turns = 5
+
+[lessons.agent]
+opening = "Congratulations on getting a draft down! That's a huge accomplishment. Let me read through what you have. Share it with me, and I'll give you my honest thoughts - what's working well and where we might want to dig deeper."
+focus = ["feedback", "revision", "improvement"]
+guidance = [
+    "Start with what's working",
+    "Be specific about suggestions",
+    "Focus on substance over style initially",
+]
+
+[[lessons]]
+id = "polish-finalize"
+name = "Polish & Finalize"
+order = 4
+description = "Final polishing and preparation for submission"
+objectives = [
+    "Fine-tune language and style",
+    "Ensure essay meets requirements",
+    "Build confidence for submission",
+]
+
+[lessons.completion]
+min_turns = 3
+
+[lessons.agent]
+opening = "We're in the home stretch! Your essay has come so far. Let's do a final polish - checking for flow, trimming any excess, and making sure every word earns its place. How are you feeling about it?"
+focus = ["polishing", "confidence", "completion"]
+guidance = [
+    "Focus on word-level improvements",
+    "Verify word count and requirements",
+    "Celebrate their accomplishment",
+]
