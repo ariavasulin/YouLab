@@ -2,19 +2,33 @@
 Default agent configuration and factory functions.
 
 Provides pre-configured agents for common use cases.
+
+.. deprecated::
+    This module is deprecated. Use AgentManager.create_agent() with
+    TOML course configuration instead.
+    See docs/Agent-System.md for migration guide.
 """
 
+import warnings
 from typing import Any
 
 from letta_starter.agents.base import BaseAgent
-from letta_starter.memory.blocks import (
+
+warnings.warn(
+    "letta_starter.agents.default is deprecated. "
+    "Use AgentManager.create_agent() with TOML course configuration instead. "
+    "See docs/Agent-System.md for migration guide.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+from letta_starter.memory.blocks import (  # noqa: E402
     CODING_ASSISTANT_PERSONA,
     DEFAULT_PERSONA,
     RESEARCH_ASSISTANT_PERSONA,
     HumanBlock,
     PersonaBlock,
 )
-from letta_starter.observability.tracing import Tracer
+from letta_starter.observability.tracing import Tracer  # noqa: E402
 
 
 def create_default_agent(

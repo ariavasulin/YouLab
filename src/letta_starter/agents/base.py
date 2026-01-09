@@ -3,15 +3,28 @@ Base agent with integrated observability and memory management.
 
 All agents in the system should inherit from BaseAgent to get
 consistent logging, tracing, and memory handling.
+
+.. deprecated::
+    This module is deprecated. Use Letta agents directly via AgentManager instead.
+    See docs/Agent-System.md for the recommended approach.
 """
 
+import warnings
 from typing import Any
 
 import structlog
 
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock
-from letta_starter.memory.manager import MemoryManager
-from letta_starter.observability.tracing import Tracer, get_tracer
+warnings.warn(
+    "letta_starter.agents.base is deprecated. "
+    "Use Letta agents directly via AgentManager instead. "
+    "See docs/Agent-System.md for the recommended approach.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from letta_starter.memory.blocks import HumanBlock, PersonaBlock  # noqa: E402
+from letta_starter.memory.manager import MemoryManager  # noqa: E402
+from letta_starter.observability.tracing import Tracer, get_tracer  # noqa: E402
 
 
 class BaseAgent:

@@ -1,7 +1,7 @@
 """Tests for AgentManager."""
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -80,10 +80,22 @@ class TestAgentManagerCache:
 class TestAgentManagerCreate:
     """Tests for agent creation."""
 
-    def test_create_agent_new(self, mock_letta_client):
-        """Test creating a new agent."""
+    @patch("letta_starter.server.agents.curriculum")
+    def test_create_agent_new(self, mock_curriculum, mock_letta_client):
+        """Test creating a new agent uses curriculum path."""
         mock_letta_client.agents.list.return_value = []
         mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
+
+        # Mock curriculum to return default course
+        mock_course = MagicMock()
+        mock_course.agent.model = "anthropic/claude-sonnet-4-20250514"
+        mock_course.agent.embedding = "openai/text-embedding-3-small"
+        mock_course.agent.system = "You are helpful."
+        mock_course.agent.tools = []
+        mock_course.blocks = {}
+        mock_course.version = "1.0.0"
+        mock_curriculum.get.return_value = mock_course
+        mock_curriculum.get_block_registry.return_value = MagicMock(get=lambda _: None)
 
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
@@ -91,12 +103,15 @@ class TestAgentManagerCreate:
         result = manager.create_agent("user123", "tutor", "Alice")
 
         assert result == "new-agent-id"
+        mock_curriculum.get.assert_called_with("default")
         mock_letta_client.agents.create.assert_called_once()
 
-    def test_create_agent_already_exists(self, mock_letta_client):
+    @patch("letta_starter.server.agents.curriculum")
+    def test_create_agent_already_exists(self, mock_curriculum, mock_letta_client):
         """Test creating agent when one already exists."""
         mock_agent = MagicMock()
-        mock_agent.name = "youlab_user123_tutor"
+        # Note: cache key uses course_id ("default") as agent_type
+        mock_agent.name = "youlab_user123_default"
         mock_agent.id = "existing-agent-id"
         mock_letta_client.agents.list.return_value = [mock_agent]
 
@@ -108,20 +123,47 @@ class TestAgentManagerCreate:
         assert result == "existing-agent-id"
         mock_letta_client.agents.create.assert_not_called()
 
-    def test_create_agent_unknown_type(self, mock_letta_client):
+    @patch("letta_starter.server.agents.curriculum")
+    def test_create_agent_unknown_type(self, mock_curriculum, mock_letta_client):
         """Test creating agent with unknown type raises error."""
         mock_letta_client.agents.list.return_value = []
+        mock_curriculum.get.return_value = None
 
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
 
-        with pytest.raises(ValueError, match="Unknown agent type"):
+        with pytest.raises(ValueError, match="Unknown course"):
             manager.create_agent("user123", "nonexistent_type")
 
-    def test_create_agent_with_user_name(self, mock_letta_client):
+    @patch("letta_starter.server.agents.curriculum")
+    def test_create_agent_with_user_name(self, mock_curriculum, mock_letta_client):
         """Test agent creation includes user name in human block."""
         mock_letta_client.agents.list.return_value = []
         mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
+
+        # Mock curriculum with a human block
+        mock_course = MagicMock()
+        mock_course.agent.model = "anthropic/claude-sonnet-4-20250514"
+        mock_course.agent.embedding = "openai/text-embedding-3-small"
+        mock_course.agent.system = "You are helpful."
+        mock_course.agent.tools = []
+        mock_course.version = "1.0.0"
+
+        # Create a proper block schema with label "human"
+        mock_block_schema = MagicMock()
+        mock_block_schema.label = "human"
+        mock_course.blocks = {"human": mock_block_schema}
+        mock_curriculum.get.return_value = mock_course
+
+        # Mock block registry with a model class that can be instantiated
+        mock_model_class = MagicMock()
+        mock_instance = MagicMock()
+        mock_instance.to_memory_string.return_value = "[NAME]\nAlice\n[ROLE]\nUser"
+        mock_model_class.return_value = mock_instance
+
+        mock_registry = MagicMock()
+        mock_registry.get.return_value = mock_model_class
+        mock_curriculum.get_block_registry.return_value = mock_registry
 
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client

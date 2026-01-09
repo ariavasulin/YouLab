@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
-    from letta_starter.background.schema import BackgroundAgentConfig, DialecticQuery
+    from letta_starter.curriculum.schema import BackgroundAgentConfig, DialecticQuery
     from letta_starter.honcho.client import HonchoClient
 
 from letta_starter.honcho.client import SessionScope
@@ -68,6 +68,7 @@ class BackgroundAgentRunner:
         self,
         config: BackgroundAgentConfig,
         user_ids: list[str] | None = None,
+        agent_id: str = "unknown",
     ) -> RunResult:
         """
         Execute a background agent for specified users.
@@ -75,13 +76,14 @@ class BackgroundAgentRunner:
         Args:
             config: Background agent configuration
             user_ids: Specific users to process (None = all)
+            agent_id: Agent identifier (from config key in curriculum)
 
         Returns:
             RunResult with execution details
 
         """
         result = RunResult(
-            agent_id=config.id,
+            agent_id=agent_id,
             started_at=datetime.now(),
         )
 
@@ -100,7 +102,7 @@ class BackgroundAgentRunner:
 
         self.logger.info(
             "background_agent_started",
-            agent_id=config.id,
+            agent_id=agent_id,
             user_count=len(target_users),
             query_count=len(config.queries),
         )
@@ -114,13 +116,14 @@ class BackgroundAgentRunner:
                     config=config,
                     user_id=user_id,
                     result=result,
+                    agent_id=agent_id,
                 )
 
         result.completed_at = datetime.now()
 
         self.logger.info(
             "background_agent_completed",
-            agent_id=config.id,
+            agent_id=agent_id,
             users_processed=result.users_processed,
             queries_executed=result.queries_executed,
             enrichments_applied=result.enrichments_applied,
@@ -156,6 +159,7 @@ class BackgroundAgentRunner:
         config: BackgroundAgentConfig,
         user_id: str,
         result: RunResult,
+        agent_id: str,
     ) -> None:
         """Process all queries for a single user."""
         result.users_processed += 1
@@ -166,6 +170,7 @@ class BackgroundAgentRunner:
                 query=query,
                 user_id=user_id,
                 result=result,
+                agent_id=agent_id,
             )
 
     async def _execute_query(
@@ -174,6 +179,7 @@ class BackgroundAgentRunner:
         query: DialecticQuery,
         user_id: str,
         result: RunResult,
+        agent_id: str,
     ) -> None:
         """Execute a single query and apply enrichment."""
         result.queries_executed += 1
@@ -196,20 +202,20 @@ class BackgroundAgentRunner:
             return
 
         # Find target agent
-        agent_id = self._get_agent_id(user_id, config.agent_types[0])
-        if not agent_id:
+        target_agent_id = self._get_agent_id(user_id, config.agent_types[0])
+        if not target_agent_id:
             result.errors.append(f"No agent found for user {user_id}")
             return
 
         # Apply enrichment
         strategy = MergeStrategy(query.merge_strategy.value)
         enrich_result = self.enricher.enrich(
-            agent_id=agent_id,
+            agent_id=target_agent_id,
             block=query.target_block,
             field=query.target_field,
             content=response.insight,
             strategy=strategy,
-            source=f"background:{config.id}",
+            source=f"background:{agent_id}",
             source_query=query.question,
         )
 

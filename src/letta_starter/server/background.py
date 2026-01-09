@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -10,18 +9,21 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from letta_starter.curriculum.schema import BackgroundAgentConfig
     from letta_starter.honcho.client import HonchoClient
 
 from letta_starter.background.runner import BackgroundAgentRunner
-from letta_starter.background.schema import CourseConfig, load_all_course_configs
+from letta_starter.curriculum import curriculum
 
 log = structlog.get_logger()
 
 router = APIRouter(prefix="/background", tags=["background"])
 
 # Global state
-_configs: dict[str, CourseConfig] = {}
 _runner: BackgroundAgentRunner | None = None
+_initialized: bool = False
 
 # Limit for errors in response
 MAX_ERRORS_IN_RESPONSE = 10
@@ -32,17 +34,24 @@ def initialize_background(
     honcho_client: HonchoClient | None,
     config_dir: Path,
 ) -> None:
-    """Initialize background agent system."""
-    global _configs, _runner
+    """
+    Initialize background agent system.
+
+    Args:
+        letta_client: Letta client instance
+        honcho_client: Honcho client (optional)
+        config_dir: Directory containing course configs (unused, curriculum is pre-initialized)
+
+    """
+    global _runner, _initialized
 
     _runner = BackgroundAgentRunner(letta_client, honcho_client)
-    _configs = load_all_course_configs(config_dir)
 
-    log.info(
-        "background_system_initialized",
-        courses_loaded=len(_configs),
-        course_ids=list(_configs.keys()),
-    )
+    # Curriculum is already initialized by server startup
+    # Background agents are accessed via curriculum.get(course_id).background
+
+    _initialized = True
+    log.info("background_system_initialized")
 
 
 class RunRequest(BaseModel):
@@ -100,24 +109,22 @@ async def run_background_agent(
         Execution result summary
 
     """
-    if _runner is None:
-        raise HTTPException(status_code=500, detail="Background system not initialized")
+    if not _initialized or _runner is None:
+        raise HTTPException(status_code=503, detail="Background system not initialized")
 
-    # Find agent config across all courses
-    agent_config = None
-    for course in _configs.values():
-        for agent in course.background_agents:
-            if agent.id == agent_id:
-                agent_config = agent
-                break
-        if agent_config:
+    # Find the agent config across all courses
+    agent_config: BackgroundAgentConfig | None = None
+    for course_id in curriculum.list_courses():
+        course = curriculum.get(course_id)
+        if course and agent_id in course.background:
+            agent_config = course.background[agent_id]
             break
 
     if agent_config is None:
-        raise HTTPException(status_code=404, detail=f"Background agent '{agent_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Background agent not found: {agent_id}")
 
     user_ids = request.user_ids if request else None
-    result = await _runner.run_agent(agent_config, user_ids)
+    result = await _runner.run_agent(agent_config, user_ids, agent_id=agent_id)
 
     return RunResponse(
         agent_id=result.agent_id,
@@ -134,22 +141,26 @@ async def run_background_agent(
 @router.get("/agents", response_model=list[AgentInfo])
 async def list_background_agents() -> list[AgentInfo]:
     """List all configured background agents."""
-    return [
-        AgentInfo(
-            id=agent.id,
-            name=agent.name,
-            course_id=course.id,
-            enabled=agent.enabled,
-            triggers={
-                "schedule": agent.triggers.schedule,
-                "idle_enabled": agent.triggers.idle.enabled,
-                "manual": agent.triggers.manual,
-            },
-            query_count=len(agent.queries),
-        )
-        for course in _configs.values()
-        for agent in course.background_agents
-    ]
+    agents = []
+    for course_id in curriculum.list_courses():
+        course = curriculum.get(course_id)
+        if course:
+            for agent_id, config in course.background.items():
+                agents.append(
+                    AgentInfo(
+                        id=agent_id,
+                        name=agent_id,
+                        course_id=course_id,
+                        enabled=config.enabled,
+                        triggers={
+                            "schedule": config.triggers.schedule,
+                            "idle_enabled": config.triggers.idle.enabled,
+                            "manual": config.triggers.manual,
+                        },
+                        query_count=len(config.queries),
+                    )
+                )
+    return agents
 
 
 @router.post("/config/reload", response_model=ReloadResponse)
@@ -158,35 +169,33 @@ async def reload_config(config_dir: str | None = None) -> ReloadResponse:
     Reload TOML configuration files.
 
     Args:
-        config_dir: Optional path override
+        config_dir: Optional path override (unused, curriculum uses its own base dir)
 
     Returns:
         Reload status
 
     """
-    global _configs
-
     try:
-        path = Path(config_dir) if config_dir else Path("config/courses")
-        _configs = load_all_course_configs(path)
+        count = curriculum.reload()
+        course_ids = curriculum.list_courses()
 
         log.info(
             "config_reloaded",
-            courses_loaded=len(_configs),
-            course_ids=list(_configs.keys()),
+            courses_loaded=count,
+            course_ids=course_ids,
         )
 
         return ReloadResponse(
             success=True,
-            courses_loaded=len(_configs),
-            course_ids=list(_configs.keys()),
+            courses_loaded=count,
+            course_ids=course_ids,
             message="Configuration reloaded successfully",
         )
     except Exception as e:
         log.error("config_reload_failed", error=str(e))
         return ReloadResponse(
             success=False,
-            courses_loaded=len(_configs),
-            course_ids=list(_configs.keys()),
+            courses_loaded=len(curriculum.list_courses()),
+            course_ids=curriculum.list_courses(),
             message=f"Reload failed: {e}",
         )

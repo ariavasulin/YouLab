@@ -7,7 +7,6 @@ from typing import Any
 import structlog
 from letta_client import Letta
 
-from letta_starter.agents.templates import templates
 from letta_starter.curriculum import curriculum
 
 log = structlog.get_logger()
@@ -84,48 +83,29 @@ class AgentManager:
         agent_type: str = "tutor",
         user_name: str | None = None,
     ) -> str:
-        """Create a new agent from template. Returns agent_id."""
-        # Check if already exists
-        existing = self.get_agent_id(user_id, agent_type)
-        if existing:
-            log.info("agent_already_exists", user_id=user_id, agent_type=agent_type)
-            return existing
+        """
+        Create a new agent for a user.
 
-        # Get template
-        template = templates.get(agent_type)
-        if template is None:
-            raise ValueError(f"Unknown agent type: {agent_type}")
+        This method now delegates to create_agent_from_curriculum() using
+        the "default" course configuration.
 
-        # Create agent
-        agent_name = self._agent_name(user_id, agent_type)
-        metadata = self._agent_metadata(user_id, agent_type)
+        Args:
+            user_id: User identifier
+            agent_type: Agent type (used as course_id, defaults to "default" for "tutor")
+            user_name: Optional user name to set in human block
 
-        # Customize human block with user name if provided
-        human_block = template.human
-        if user_name:
-            human_block = template.human.model_copy()
-            human_block.name = user_name
+        Returns:
+            Agent ID
 
-        agent = self.client.agents.create(
-            name=agent_name,
-            model="openai/gpt-4o-mini",  # OpenAI model for responses
-            embedding="openai/text-embedding-ada-002",  # OpenAI embedding model
-            memory_blocks=[
-                {"label": "persona", "value": template.persona.to_memory_string()},
-                {"label": "human", "value": human_block.to_memory_string()},
-            ],
-            metadata=metadata,
-        )
+        """
+        # Map legacy "tutor" type to "default" course
+        course_id = "default" if agent_type == "tutor" else agent_type
 
-        # Update cache
-        self._cache[(user_id, agent_type)] = agent.id
-        log.info(
-            "agent_created",
-            agent_id=agent.id,
+        return self.create_agent_from_curriculum(
             user_id=user_id,
-            agent_type=agent_type,
+            course_id=course_id,
+            user_name=user_name,
         )
-        return agent.id
 
     def create_agent_from_curriculum(
         self,
