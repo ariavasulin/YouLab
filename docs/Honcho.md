@@ -178,7 +178,7 @@ class DialecticResponse:
 
 ## Fire-and-Forget Pattern
 
-**Location**: `src/letta_starter/honcho/client.py:220-272`
+**Location**: `src/letta_starter/honcho/client.py:310-363`
 
 Messages are persisted asynchronously without blocking the chat response:
 

@@ -26,11 +26,13 @@ A complete system where:
 │  Phase 2: User Identity ✓ (absorbed into Phase 1)               │
 │  Phase 3: Honcho Integration ✓                                  │
 │  Phase 4: Thread Context ✓                                      │
+│  Phase 5: Curriculum System ✓                                   │
+│  Phase 6: Background Worker ✓                                   │
 └─────────────────────────────────────────────────────────────────┘
                                │
                                ▼
                     ┌──────────────────────────┐
-                    │     Next: Phase 5, 6     │
+                    │     Next: Phase 7        │
                     └──────────────────────────┘
 ```
 
@@ -41,12 +43,12 @@ A complete system where:
 | Phase | Name | Status | Dependencies |
 |-------|------|--------|--------------|
 | 1 | HTTP Service | **Complete** | - |
-| 2 | User Identity & Routing | **Complete** (absorbed into Phase 1) | Phase 1 |
+| 2 | User Identity & Routing | **Complete** | Phase 1 |
 | 3 | Honcho Integration | **Complete** | Phase 1 |
 | 4 | Thread Context | **Complete** | Phase 1 |
-| 5 | Curriculum Parser | Planned | Phase 4 |
-| 6 | Background Worker | Planned | Phase 3 |
-| 7 | Student Onboarding | Planned | Phase 5 |
+| 5 | Curriculum System | **Complete** | Phase 4 |
+| 6 | Background Worker | **Complete** | Phase 3 |
+| 7 | Student Onboarding | Not Started | Phase 5 |
 
 ### Dependency Graph
 
@@ -166,58 +168,45 @@ Original plan included complex title parsing ("Module 1 / Lesson 2" format), con
 
 ---
 
-## Phase 5: Curriculum Parser
+## Phase 5: Curriculum System (Complete)
 
-Load course definitions from markdown files.
+Load course definitions from TOML files.
 
-### Goals
+### Deliverables
 
-- Define curriculum in markdown
-- Parse into structured data
-- Hot-reload on file changes
+- [x] Define curriculum in TOML with course.toml and modules/
+- [x] Parse into Pydantic schemas (CourseConfig, ModuleConfig, LessonConfig)
+- [x] Hot-reload on API endpoint
+- [x] Dynamic memory block generation from schema
+- [x] HTTP endpoints for curriculum management
 
-### Proposed Format
+### Key Files
 
-```markdown
-# courses/college-essay/module-1.md
----
-name: Self-Discovery
-lessons:
-  - strengths-assessment
-  - processing-results
----
-
-## Lesson: strengths-assessment
-trigger: module_start
-objectives:
-  - Complete Clifton StrengthsFinder
-  - Initial reaction conversation
-
-### Agent Instructions
-[Instructions for agent behavior]
-
-### Completion Criteria
-- Articulated one resonant strength
-- Minimum 3 turns
-```
+- `src/letta_starter/curriculum/schema.py`
+- `src/letta_starter/curriculum/loader.py`
+- `src/letta_starter/curriculum/blocks.py`
+- `src/letta_starter/server/curriculum.py`
+- `config/courses/college-essay/course.toml`
 
 ---
 
-## Phase 6: Background Worker
+## Phase 6: Background Worker (Complete)
 
-Query Honcho dialectic and update agent memory on idle.
+Query Honcho dialectic and update agent memory on schedule or manual trigger.
 
-### Goals
+### Deliverables
 
-- Detect idle students
-- Query dialectic for insights
-- Update memory blocks
-- Enrich agent behavior
+- [x] BackgroundAgentRunner execution engine
+- [x] MemoryEnricher for external memory updates
+- [x] Audit trails in archival memory
+- [x] HTTP endpoints for manual triggers
+- [x] TOML configuration for background agents
 
-### Trigger Conditions
+### Key Files
 
-- Idle timeout (configurable, e.g., 10 minutes)
-- Manual endpoint (`POST /background/run`)
+- `src/letta_starter/background/runner.py`
+- `src/letta_starter/memory/enricher.py`
+- `src/letta_starter/server/background.py`
 
 ---
 

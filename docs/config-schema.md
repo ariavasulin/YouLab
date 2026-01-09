@@ -2,6 +2,8 @@
 
 This document describes the TOML configuration schema for YouLab courses.
 
+> **Note**: TOML configuration replaces the deprecated Python-based approach (`PersonaBlock`, `HumanBlock`, `AgentTemplate`). See [[Agent-System#Migration Guide]] for migration details.
+
 ## Design Principles
 
 - **Self-contained**: Each course.toml is complete without external references
@@ -125,6 +127,40 @@ tone = { type = "string", default = "warm", options = ["warm", "professional", "
 capabilities = { type = "list", default = [], max = 10 }
 ```
 
+### Complete Block Examples
+
+**Persona Block** (replaces deprecated `PersonaBlock`):
+```toml
+[blocks.persona]
+label = "persona"
+description = "Agent identity and behavior"
+
+[blocks.persona.fields]
+name = { type = "string", default = "Essay Coach" }
+role = { type = "string", default = "AI tutor specializing in college application essays" }
+tone = { type = "string", default = "warm", options = ["warm", "professional", "friendly", "casual"] }
+verbosity = { type = "string", default = "adaptive", options = ["concise", "detailed", "adaptive"] }
+capabilities = { type = "list", default = ["Guide students", "Provide feedback", "Ask clarifying questions"], max = 10 }
+expertise = { type = "list", default = ["College admissions", "Personal narrative", "Reflective writing"], max = 5 }
+constraints = { type = "list", default = ["Never write essays for students"], max = 5 }
+```
+
+**Human Block** (replaces deprecated `HumanBlock`):
+```toml
+[blocks.human]
+label = "human"
+description = "User context and session state"
+
+[blocks.human.fields]
+name = { type = "string", default = "" }
+role = { type = "string", default = "" }
+current_task = { type = "string", default = "" }
+session_state = { type = "string", default = "idle", options = ["idle", "active_task", "waiting_input", "thinking"] }
+preferences = { type = "list", default = [], max = 10 }
+context_notes = { type = "list", default = [], max = 20 }
+facts = { type = "list", default = [], max = 15 }
+```
+
 ### [background.{agent-id}] - Background Agent Configuration
 
 | Field | Type | Default | Description |
@@ -174,7 +210,7 @@ threshold_minutes = 30
 |-------|------|---------|-------------|
 | id | string | - | Unique query identifier |
 | question | string | - | Question to ask about conversation |
-| session_scope | enum | "all" | Scope: "all", "recent", "current" |
+| session_scope | enum | "all" | Scope: "all", "recent", "current", "specific" |
 | recent_limit | int | 5 | Number of recent sessions (if scope is "recent") |
 | target_block | string | - | Memory block to update |
 | target_field | string | - | Field within block to update |
@@ -218,6 +254,15 @@ Module files define the curriculum structure with lessons.
 | name | string | yes | - | Display name |
 | order | int | no | 0 | Sort order |
 | description | string | no | "" | Module description |
+
+### [module.background.{agent-id}] - Module-Level Background Overrides
+
+Modules can override background agent configuration for module-specific behavior.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| enabled | bool | inherited | Override enabled status |
+| queries | array | inherited | Override or extend queries |
 
 ### [[lessons]] - Lesson Configuration
 

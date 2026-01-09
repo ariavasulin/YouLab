@@ -220,25 +220,29 @@ User types "Help me brainstorm essay topics"
 ```
 src/letta_starter/
 ├── agents/              # Agent creation and management
-│   ├── base.py          # BaseAgent class
-│   ├── default.py       # Factory functions, AgentRegistry
-│   └── templates.py     # AgentTemplate, TUTOR_TEMPLATE
+│   ├── base.py          # BaseAgent class (deprecated)
+│   ├── default.py       # Factory functions (deprecated)
+│   └── templates.py     # AgentTemplate (deprecated)
 │
 ├── background/          # Background agent system
-│   ├── schema.py        # TOML config schemas (CourseConfig, etc.)
 │   └── runner.py        # BackgroundAgentRunner execution engine
 │
 ├── config/              # Configuration
 │   └── settings.py      # Settings, ServiceSettings
+│
+├── curriculum/          # Curriculum system
+│   ├── schema.py        # Full Pydantic schemas (CourseConfig, etc.)
+│   ├── loader.py        # TOML loading and caching
+│   └── blocks.py        # Dynamic memory block generation
 │
 ├── honcho/              # Message persistence + dialectic
 │   ├── __init__.py      # Exports HonchoClient
 │   └── client.py        # HonchoClient, query_dialectic
 │
 ├── memory/              # Memory system
-│   ├── blocks.py        # PersonaBlock, HumanBlock
-│   ├── manager.py       # MemoryManager
-│   ├── strategies.py    # Rotation strategies
+│   ├── blocks.py        # PersonaBlock, HumanBlock (deprecated)
+│   ├── manager.py       # MemoryManager (deprecated)
+│   ├── strategies.py    # Rotation strategies (deprecated)
 │   └── enricher.py      # MemoryEnricher for external updates
 │
 ├── observability/       # Logging and tracing
@@ -253,9 +257,13 @@ src/letta_starter/
 │   ├── main.py          # FastAPI app
 │   ├── agents.py        # AgentManager
 │   ├── background.py    # Background agent endpoints
+│   ├── curriculum.py    # Curriculum endpoints
 │   ├── schemas.py       # Request/response models
 │   ├── tracing.py       # Langfuse integration
 │   └── strategy/        # Strategy agent subsystem
+│       ├── manager.py   # StrategyManager
+│       ├── router.py    # FastAPI router
+│       └── schemas.py   # Strategy schemas
 │
 ├── tools/               # Agent tools
 │   ├── dialectic.py     # query_honcho tool
@@ -265,7 +273,14 @@ src/letta_starter/
 
 config/
 └── courses/             # TOML course configurations
-    └── college-essay.toml
+    ├── default/         # Default agent configuration
+    │   └── course.toml
+    └── college-essay/   # College essay course
+        ├── course.toml
+        └── modules/
+            ├── 01-self-discovery.toml
+            ├── 02-topic-development.toml
+            └── 03-drafting.toml
 ```
 
 ## Design Decisions
