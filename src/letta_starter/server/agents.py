@@ -20,6 +20,8 @@ class AgentManager:
         self._client = None
         # Cache: (user_id, agent_type) -> agent_id
         self._cache: dict[tuple[str, str], str] = {}
+        # Cache: (course_id, block_label) -> block_id for shared blocks
+        self._shared_blocks: dict[tuple[str, str], str] = {}
 
     @property
     def client(self) -> Any:
@@ -43,6 +45,71 @@ class AgentManager:
             "youlab_user_id": user_id,
             "youlab_agent_type": agent_type,
         }
+
+    def _shared_block_name(self, course_id: str, block_label: str) -> str:
+        """Generate unique name for a shared block."""
+        return f"youlab_shared_{course_id}_{block_label}"
+
+    def _get_or_create_shared_block(
+        self,
+        course_id: str,
+        block_label: str,
+        block_value: str,
+        description: str = "",
+    ) -> str:
+        """
+        Get or create a shared block for a course.
+
+        Shared blocks are created once and reused across all agents
+        using the same course. This enables cross-agent memory sharing.
+
+        Args:
+            course_id: Course identifier
+            block_label: Block label (e.g., "team", "organization")
+            block_value: Initial block content
+            description: Block description
+
+        Returns:
+            Block ID
+
+        """
+        cache_key = (course_id, block_label)
+
+        # Check cache first
+        if cache_key in self._shared_blocks:
+            return self._shared_blocks[cache_key]
+
+        # Check if block exists in Letta
+        block_name = self._shared_block_name(course_id, block_label)
+        existing_blocks = self.client.blocks.list()
+        for block in existing_blocks:
+            if getattr(block, "name", None) == block_name:
+                self._shared_blocks[cache_key] = block.id
+                log.debug(
+                    "shared_block_found",
+                    course_id=course_id,
+                    block_label=block_label,
+                    block_id=block.id,
+                )
+                return block.id
+
+        # Create new shared block
+        block = self.client.blocks.create(
+            label=block_label,
+            value=block_value,
+            name=block_name,
+            description=description or f"Shared {block_label} block for {course_id}",
+        )
+
+        self._shared_blocks[cache_key] = block.id
+        log.info(
+            "shared_block_created",
+            course_id=course_id,
+            block_label=block_label,
+            block_id=block.id,
+        )
+
+        return block.id
 
     async def rebuild_cache(self) -> int:
         """Rebuild cache from Letta on startup. Returns count of agents found."""
@@ -155,8 +222,10 @@ class AgentManager:
             raise ValueError(f"Block registry not found for course: {course_id}")
 
         # Build memory blocks from course schema
+        # Separate shared blocks (existing block_ids) from per-agent blocks
         overrides = block_overrides or {}
         memory_blocks = []
+        shared_block_ids = []
 
         for block_name, block_schema in course.blocks.items():
             model_class = block_registry.get(block_name)
@@ -172,13 +241,25 @@ class AgentManager:
 
             # Create instance with overrides
             instance = model_class(**block_override)
+            block_value = instance.to_memory_string()
 
-            memory_blocks.append(
-                {
-                    "label": block_schema.label,
-                    "value": instance.to_memory_string(),
-                }
-            )
+            if block_schema.shared:
+                # Shared block: get or create once, attach via block_ids
+                block_id = self._get_or_create_shared_block(
+                    course_id=course_id,
+                    block_label=block_schema.label,
+                    block_value=block_value,
+                    description=block_schema.description,
+                )
+                shared_block_ids.append(block_id)
+            else:
+                # Per-agent block: create fresh for this agent
+                memory_blocks.append(
+                    {
+                        "label": block_schema.label,
+                        "value": block_value,
+                    }
+                )
 
         # Build tool list
         tool_names = [tool.id for tool in course.agent.tools if tool.enabled]
@@ -196,12 +277,14 @@ class AgentManager:
                 tool_rules.append(rule)
 
         # Create agent with curriculum config
+        # Include block_ids for shared blocks (these are pre-existing blocks)
         agent = self.client.agents.create(
             name=agent_name,
             model=course.agent.model,
             embedding=course.agent.embedding,
             system=course.agent.system if course.agent.system else None,
-            memory_blocks=memory_blocks,
+            memory_blocks=memory_blocks if memory_blocks else None,
+            block_ids=shared_block_ids if shared_block_ids else None,
             tools=tool_names if tool_names else None,
             tool_rules=tool_rules if tool_rules else None,
             metadata={
@@ -219,6 +302,7 @@ class AgentManager:
             course_id=course_id,
             agent_id=agent.id,
             blocks=list(course.blocks.keys()),
+            shared_blocks=len(shared_block_ids),
             tools=tool_names,
         )
 
