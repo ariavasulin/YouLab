@@ -9,11 +9,13 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from letta_starter.config.settings import ServiceSettings
+from letta_starter.curriculum import curriculum
 from letta_starter.honcho import HonchoClient
 from letta_starter.honcho.client import create_persist_task
 from letta_starter.server.agents import AgentManager
 from letta_starter.server.background import initialize_background
 from letta_starter.server.background import router as background_router
+from letta_starter.server.curriculum import router as curriculum_router
 from letta_starter.server.schemas import (
     AgentListResponse,
     AgentResponse,
@@ -67,6 +69,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         set_honcho_client(app.state.honcho_client)
     log.info("tool_globals_initialized")
 
+    # Initialize curriculum registry
+    curriculum.initialize(Path("config/courses"))
+    courses_loaded = curriculum.load_all()
+    log.info("curriculum_initialized", courses=courses_loaded)
+
     # Initialize background agent system
     initialize_background(
         letta_client=app.state.agent_manager.client,
@@ -90,6 +97,7 @@ app = FastAPI(
 # Include routers
 app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
 app.include_router(background_router)
+app.include_router(curriculum_router)
 
 
 def get_agent_manager() -> AgentManager:
