@@ -96,7 +96,6 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/honcho/client.py` - HonchoClient for message persistence + dialectic queries
 - `src/letta_starter/tools/dialectic.py` - query_honcho tool for in-conversation ToM queries
 - `src/letta_starter/tools/memory.py` - edit_memory_block tool for agent-driven memory updates
-- `src/letta_starter/background/schema.py` - Pydantic schemas for TOML course configuration
 - `src/letta_starter/background/runner.py` - BackgroundAgentRunner execution engine
 - `src/letta_starter/curriculum/schema.py` - Full curriculum schema (CourseConfig, blocks, lessons)
 - `src/letta_starter/curriculum/blocks.py` - Dynamic memory block generation from TOML
@@ -106,6 +105,21 @@ Requires Letta server: `pip install letta && letta server`
 - `docs/config-schema.md` - Complete TOML configuration reference
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
+
+## Deprecated Code
+
+The following modules are deprecated in favor of TOML-based configuration:
+
+| Module | Replacement |
+|--------|-------------|
+| `agents/templates.py` | `config/courses/*/course.toml` |
+| `agents/default.py` | `AgentManager.create_agent()` with curriculum |
+| `agents/base.py` | Letta agents via `AgentManager` |
+| `memory/manager.py` | Agent-driven memory via `edit_memory_block` tool |
+| `memory/blocks.py` PersonaBlock/HumanBlock | Dynamic blocks from TOML schema |
+| `memory/strategies.py` | Not needed with agent-driven memory |
+
+These modules remain for backwards compatibility but emit `DeprecationWarning` on import.
 
 ## Roadmap
 

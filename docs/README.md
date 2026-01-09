@@ -37,10 +37,10 @@ HTTP Service (FastAPI:8100)
 |-------|--------|-------------|
 | Phase 1: HTTP Service | **Complete** | FastAPI service with agent management and streaming |
 | Phase 2: User Identity | **Complete** | Per-user agents via OpenWebUI integration |
-| Phase 3: Honcho | Not Started | Theory of Mind integration |
-| Phase 4: Thread Context | Not Started | Chat title parsing for lesson context |
-| Phase 5: Curriculum | Not Started | Markdown-based course definitions |
-| Phase 6: Background Worker | Not Started | Async Honcho queries |
+| Phase 3: Honcho | **Complete** | Message persistence for theory-of-mind modeling |
+| Phase 4: Thread Context | **Complete** | Chat title extraction and metadata flow |
+| Phase 5: Curriculum | **Complete** | TOML-based course definitions with hot-reload |
+| Phase 6: Background Worker | **Complete** | Scheduled Honcho queries with memory enrichment |
 | Phase 7: Onboarding | Not Started | Student setup flow |
 
 ## Quick Links

@@ -2,6 +2,8 @@
 
 [[README|← Back to Overview]]
 
+> **Note**: The `MemoryManager`, `PersonaBlock`, and `HumanBlock` classes are deprecated. The curriculum-based agent path uses agent-driven memory via the `edit_memory_block` tool. Memory block schemas are now defined in TOML course configurations.
+
 The memory system provides structured, token-efficient context management for Letta agents.
 
 ## Overview

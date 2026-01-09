@@ -2,6 +2,132 @@
 
 [[README|← Back to Overview]]
 
+> **Note**: The template-based agent creation (`AgentTemplate`, factory functions, `BaseAgent`) is deprecated. New code should use `AgentManager.create_agent()` which loads configuration from TOML files in `config/courses/`.
+
+## Migration Guide
+
+The agent system has migrated from Python-based templates to TOML-based configuration.
+
+### Before (Deprecated)
+
+```python
+# Old approach - templates.py
+from letta_starter.agents.templates import TUTOR_TEMPLATE, templates
+from letta_starter.agents.default import create_custom_agent
+from letta_starter.memory.blocks import PersonaBlock, HumanBlock
+
+agent = create_custom_agent(
+    client=letta_client,
+    name="tutor",
+    role="AI tutor",
+    capabilities=["Guide students", "Provide feedback"],
+    ...
+)
+```
+
+### After (Recommended)
+
+```toml
+# config/courses/my-course/course.toml
+[agent]
+type = "tutor"
+display_name = "My Course Coach"
+system_prompt = "You are an AI tutor..."
+
+[agent.blocks.persona]
+name = "persona"
+label = "Persona"
+value = """
+[IDENTITY] Course Coach | AI tutor
+[CAPABILITIES] Guide students, Provide feedback
+[STYLE] warm, adaptive
+"""
+```
+
+```python
+# Python code - use AgentManager
+from letta_starter.server.agents import AgentManager
+from letta_starter.curriculum.loader import load_course_config
+
+config = load_course_config("my-course")
+agent_manager = AgentManager(letta_client)
+agent_state = await agent_manager.create_agent(
+    user_id="user123",
+    course_config=config,
+)
+```
+
+### Migration Steps
+
+1. **Convert PersonaBlock to TOML blocks**: Define your agent's persona as a `[agent.blocks.persona]` section in your course TOML file
+2. **Replace factory functions**: Use `AgentManager.create_agent()` instead of `create_*_agent()` functions
+3. **Update imports**: Remove imports from deprecated modules (`agents/templates`, `agents/default`, `agents/base`, `memory/blocks`, `memory/manager`)
+4. **Use curriculum loader**: Load configuration via `load_course_config()` from `curriculum/loader.py`
+
+### Deprecated Modules
+
+| Deprecated Module | Replacement |
+|-------------------|-------------|
+| `agents/templates.py` | `config/courses/*/course.toml` |
+| `agents/default.py` | `AgentManager.create_agent()` |
+| `agents/base.py` | Direct Letta agents via AgentManager |
+| `memory/blocks.py` (PersonaBlock/HumanBlock) | TOML-defined blocks |
+| `memory/manager.py` | Agent-driven memory via `edit_memory_block` tool |
+| `memory/strategies.py` | Not needed with agent-driven memory |
+
+These modules emit `DeprecationWarning` on import and will be removed in a future version.
+
+---
+
+## AgentManager (Recommended)
+
+The `AgentManager` class is the recommended way to create and manage agents.
+
+**Location**: `src/letta_starter/server/agents.py`
+
+### Key Methods
+
+```python
+class AgentManager:
+    async def create_agent(
+        self,
+        user_id: str,
+        course_config: CourseConfig,
+        user_name: str | None = None,
+    ) -> AgentState:
+        """Create a new agent from TOML course configuration."""
+
+    async def get_or_create_agent(
+        self,
+        user_id: str,
+        course_config: CourseConfig,
+    ) -> AgentState:
+        """Get existing agent or create new one."""
+
+    async def send_message(
+        self,
+        user_id: str,
+        message: str,
+        course_config: CourseConfig,
+    ) -> str:
+        """Send message to user's agent."""
+
+    async def delete_agent(self, user_id: str, course_id: str) -> bool:
+        """Delete user's agent."""
+```
+
+### Agent Naming Convention
+
+Agents are named using the pattern: `youlab_{user_id}_{course_id}`
+
+This allows each user to have separate agents for different courses.
+
+---
+
+## Legacy Documentation
+
+> **Warning**: The following sections document deprecated APIs. They are kept for reference during migration but should not be used in new code.
+
 The agent system provides templates, factories, and runtime management for Letta agents.
 
 ## Overview
@@ -52,6 +178,7 @@ class AgentTemplate(BaseModel):
     description: str      # Template description
     persona: PersonaBlock # Agent identity
     human: HumanBlock     # Initial user context (usually empty)
+    tools: list[Callable] # Tool functions available to agent
 ```
 
 ### TUTOR_TEMPLATE
@@ -102,6 +229,9 @@ template = templates.get("tutor")
 
 # List all types
 types = templates.list_types()  # ["tutor"]
+
+# Get all templates
+all_templates = templates.get_all()  # {"tutor": AgentTemplate(...)}
 
 # Register custom template
 templates.register(my_template)

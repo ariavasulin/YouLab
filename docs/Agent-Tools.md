@@ -70,13 +70,15 @@ Example: query_honcho("How engaged is this student with the current topic?")
 
 ### Context Requirements
 
-The tool requires user context to be set before the conversation:
+The tools require client context to be set before use:
 
 ```python
 from letta_starter.tools.dialectic import set_honcho_client, set_user_context
+from letta_starter.tools.memory import set_letta_client
 
 # During service initialization
 set_honcho_client(honcho_client)
+set_letta_client(letta_client)
 
 # Before each conversation
 set_user_context(agent_id="agent-abc", user_id="user123")

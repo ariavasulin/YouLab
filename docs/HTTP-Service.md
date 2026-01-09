@@ -437,6 +437,102 @@ Hot-reloads TOML configuration files from disk.
 
 ---
 
+## Curriculum Endpoints
+
+The curriculum system provides course configuration management.
+
+**Location**: `src/letta_starter/server/curriculum.py`
+
+### List Courses
+
+```http
+GET /curriculum/courses
+```
+
+Lists all available courses.
+
+**Response**:
+```json
+{
+  "courses": ["default", "college-essay"],
+  "count": 2
+}
+```
+
+---
+
+### Get Course Details
+
+```http
+GET /curriculum/courses/{course_id}
+```
+
+Returns course metadata and structure.
+
+**Response**:
+```json
+{
+  "id": "college-essay",
+  "name": "College Essay Coaching",
+  "version": "1.0.0",
+  "description": "AI-powered tutoring for college application essays",
+  "modules": [
+    {"id": "01-self-discovery", "name": "Self-Discovery", "lesson_count": 3}
+  ],
+  "blocks": [
+    {"name": "persona", "label": "persona", "field_count": 7}
+  ],
+  "background_agents": ["insight-harvester"],
+  "tool_count": 3
+}
+```
+
+---
+
+### Get Full Course Config
+
+```http
+GET /curriculum/courses/{course_id}/full
+```
+
+Returns complete course configuration as JSON (useful for debugging or UI editors).
+
+**Response**: Full `CourseConfig` serialized to JSON.
+
+---
+
+### Get Course Modules
+
+```http
+GET /curriculum/courses/{course_id}/modules
+```
+
+Returns all modules with full lesson details.
+
+**Response**: List of `ModuleConfig` serialized to JSON.
+
+---
+
+### Reload Configuration
+
+```http
+POST /curriculum/reload
+```
+
+Hot-reloads all curriculum configurations from disk.
+
+**Response**:
+```json
+{
+  "success": true,
+  "courses_loaded": 2,
+  "courses": ["default", "college-essay"],
+  "message": "Configuration reloaded successfully"
+}
+```
+
+---
+
 ## AgentManager
 
 The `AgentManager` class handles all agent operations.
@@ -478,6 +574,26 @@ async def lifespan(app):
     count = await app.state.agent_manager.rebuild_cache()
     log.info("startup_complete", cached_agents=count)
 ```
+
+### Curriculum-Based Agent Creation
+
+Agents can be created from TOML course configurations:
+
+```python
+agent_id = manager.create_agent_from_curriculum(
+    user_id="user123",
+    course_id="college-essay",
+    user_name="Alice",
+    block_overrides={"human": {"name": "Alice"}},
+)
+```
+
+This method:
+- Loads configuration from `config/courses/{course_id}/course.toml`
+- Builds memory blocks from TOML schema definitions
+- Configures tools and tool rules from course config
+- Uses course-specified model and embedding
+- Adds course metadata to agent
 
 ---
 
