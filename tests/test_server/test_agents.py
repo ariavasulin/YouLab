@@ -152,6 +152,7 @@ class TestAgentManagerCreate:
         # Create a proper block schema with label "human"
         mock_block_schema = MagicMock()
         mock_block_schema.label = "human"
+        mock_block_schema.shared = False  # Not a shared block
         mock_course.blocks = {"human": mock_block_schema}
         mock_curriculum.get.return_value = mock_course
 
@@ -176,6 +177,130 @@ class TestAgentManagerCreate:
         # Find the human block and check it contains Alice
         human_block = next(b for b in call_kwargs["memory_blocks"] if b["label"] == "human")
         assert "Alice" in human_block["value"]
+
+
+class TestAgentManagerSharedBlocks:
+    """Tests for shared block functionality."""
+
+    @patch("letta_starter.server.agents.curriculum")
+    def test_shared_block_created_and_reused(self, mock_curriculum, mock_letta_client):
+        """Test that shared blocks are created once and reused across agents."""
+        mock_letta_client.agents.list.return_value = []
+        mock_letta_client.blocks.list.return_value = []  # No existing blocks
+        mock_letta_client.blocks.create.return_value = MagicMock(id="shared-block-id")
+        mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
+
+        # Mock course with a shared block
+        mock_course = MagicMock()
+        mock_course.agent.model = "anthropic/claude-sonnet-4-20250514"
+        mock_course.agent.embedding = "openai/text-embedding-3-small"
+        mock_course.agent.system = "You are helpful."
+        mock_course.agent.tools = []
+        mock_course.version = "1.0.0"
+
+        # Create shared team block and regular human block
+        mock_team_schema = MagicMock()
+        mock_team_schema.label = "team"
+        mock_team_schema.shared = True
+        mock_team_schema.description = "Shared team context"
+
+        mock_human_schema = MagicMock()
+        mock_human_schema.label = "human"
+        mock_human_schema.shared = False
+
+        mock_course.blocks = {"team": mock_team_schema, "human": mock_human_schema}
+        mock_curriculum.get.return_value = mock_course
+
+        # Mock block registry
+        mock_model_class = MagicMock()
+        mock_instance = MagicMock()
+        mock_instance.to_memory_string.return_value = "[BLOCK]\ntest"
+        mock_model_class.return_value = mock_instance
+
+        mock_registry = MagicMock()
+        mock_registry.get.return_value = mock_model_class
+        mock_curriculum.get_block_registry.return_value = mock_registry
+
+        manager = AgentManager("http://localhost:8283")
+        manager._client = mock_letta_client
+
+        # Create first agent
+        manager.create_agent_from_curriculum("user1", "test-course")
+
+        # Verify shared block was created
+        mock_letta_client.blocks.create.assert_called_once()
+        create_call = mock_letta_client.blocks.create.call_args
+        assert create_call.kwargs["label"] == "team"
+        assert "youlab_shared" in create_call.kwargs["name"]
+
+        # Verify agent was created with block_ids for shared block
+        agent_create_call = mock_letta_client.agents.create.call_args.kwargs
+        assert agent_create_call["block_ids"] == ["shared-block-id"]
+
+        # Reset create calls
+        mock_letta_client.blocks.create.reset_mock()
+        mock_letta_client.agents.create.reset_mock()
+        mock_letta_client.agents.create.return_value = MagicMock(id="agent-2-id")
+
+        # Create second agent - should reuse existing shared block
+        manager.create_agent_from_curriculum("user2", "test-course")
+
+        # Shared block should NOT be created again
+        mock_letta_client.blocks.create.assert_not_called()
+
+        # But agent should still be created with the same block_id
+        agent_create_call = mock_letta_client.agents.create.call_args.kwargs
+        assert agent_create_call["block_ids"] == ["shared-block-id"]
+
+    @patch("letta_starter.server.agents.curriculum")
+    def test_shared_block_found_in_letta(self, mock_curriculum, mock_letta_client):
+        """Test that existing shared blocks in Letta are discovered."""
+        mock_letta_client.agents.list.return_value = []
+
+        # Mock existing block in Letta
+        existing_block = MagicMock()
+        existing_block.id = "existing-shared-block-id"
+        existing_block.name = "youlab_shared_test-course_team"
+        mock_letta_client.blocks.list.return_value = [existing_block]
+
+        mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
+
+        # Mock course with shared block
+        mock_course = MagicMock()
+        mock_course.agent.model = "anthropic/claude-sonnet-4-20250514"
+        mock_course.agent.embedding = "openai/text-embedding-3-small"
+        mock_course.agent.system = ""
+        mock_course.agent.tools = []
+        mock_course.version = "1.0.0"
+
+        mock_team_schema = MagicMock()
+        mock_team_schema.label = "team"
+        mock_team_schema.shared = True
+        mock_team_schema.description = ""
+
+        mock_course.blocks = {"team": mock_team_schema}
+        mock_curriculum.get.return_value = mock_course
+
+        mock_model_class = MagicMock()
+        mock_instance = MagicMock()
+        mock_instance.to_memory_string.return_value = "test"
+        mock_model_class.return_value = mock_instance
+
+        mock_registry = MagicMock()
+        mock_registry.get.return_value = mock_model_class
+        mock_curriculum.get_block_registry.return_value = mock_registry
+
+        manager = AgentManager("http://localhost:8283")
+        manager._client = mock_letta_client
+
+        manager.create_agent_from_curriculum("user1", "test-course")
+
+        # Should NOT create a new block since one already exists
+        mock_letta_client.blocks.create.assert_not_called()
+
+        # Should use the existing block ID
+        agent_create_call = mock_letta_client.agents.create.call_args.kwargs
+        assert agent_create_call["block_ids"] == ["existing-shared-block-id"]
 
 
 class TestAgentManagerRebuildCache:
