@@ -8,6 +8,7 @@ import structlog
 from letta_client import Letta
 
 from letta_starter.agents.templates import templates
+from letta_starter.curriculum import curriculum
 
 log = structlog.get_logger()
 
@@ -124,6 +125,123 @@ class AgentManager:
             user_id=user_id,
             agent_type=agent_type,
         )
+        return agent.id
+
+    def create_agent_from_curriculum(
+        self,
+        user_id: str,
+        course_id: str,
+        user_name: str | None = None,
+        block_overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> str:
+        """
+        Create an agent based on curriculum configuration.
+
+        Args:
+            user_id: User identifier
+            course_id: Course to use for agent configuration
+            user_name: Optional user name to set in student/human block
+            block_overrides: Optional field overrides per block
+
+        Returns:
+            Agent ID
+
+        Raises:
+            ValueError: If course not found
+
+        """
+        course = curriculum.get(course_id)
+        if course is None:
+            raise ValueError(f"Unknown course: {course_id}")
+
+        # Use course_id as agent_type for caching
+        agent_type = course_id
+        agent_name = self._agent_name(user_id, agent_type)
+
+        # Check for existing agent
+        existing = self.get_agent_id(user_id, agent_type)
+        if existing:
+            log.info(
+                "agent_already_exists",
+                user_id=user_id,
+                agent_type=agent_type,
+                course_id=course_id,
+            )
+            return existing
+
+        # Get block registry for this course
+        block_registry = curriculum.get_block_registry(course_id)
+        if block_registry is None:
+            raise ValueError(f"Block registry not found for course: {course_id}")
+
+        # Build memory blocks from course schema
+        overrides = block_overrides or {}
+        memory_blocks = []
+
+        for block_name, block_schema in course.blocks.items():
+            model_class = block_registry.get(block_name)
+            if model_class is None:
+                continue
+
+            # Get block-specific overrides
+            block_override = overrides.get(block_name, {})
+
+            # Inject user name into human/student block
+            if block_schema.label == "human" and user_name:
+                block_override.setdefault("name", user_name)
+
+            # Create instance with overrides
+            instance = model_class(**block_override)
+
+            memory_blocks.append(
+                {
+                    "label": block_schema.label,
+                    "value": instance.to_memory_string(),
+                }
+            )
+
+        # Build tool list
+        tool_names = [tool.id for tool in course.agent.tools if tool.enabled]
+
+        # Build tool rules
+        tool_rules = []
+        for tool in course.agent.tools:
+            if tool.enabled and tool.rules:
+                rule: dict[str, Any] = {
+                    "tool_name": tool.id,
+                    "type": tool.rules.type.value,
+                }
+                if tool.rules.max_count:
+                    rule["max_count"] = tool.rules.max_count
+                tool_rules.append(rule)
+
+        # Create agent with curriculum config
+        agent = self.client.agents.create(
+            name=agent_name,
+            model=course.agent.model,
+            embedding=course.agent.embedding,
+            system=course.agent.system if course.agent.system else None,
+            memory_blocks=memory_blocks,
+            tools=tool_names if tool_names else None,
+            tool_rules=tool_rules if tool_rules else None,
+            metadata={
+                **self._agent_metadata(user_id, agent_type),
+                "course_id": course_id,
+                "course_version": course.version,
+            },
+        )
+
+        self._cache[(user_id, agent_type)] = agent.id
+
+        log.info(
+            "agent_created_from_curriculum",
+            user_id=user_id,
+            course_id=course_id,
+            agent_id=agent.id,
+            blocks=list(course.blocks.keys()),
+            tools=tool_names,
+        )
+
         return agent.id
 
     def get_agent_info(self, agent_id: str) -> dict[str, Any] | None:
