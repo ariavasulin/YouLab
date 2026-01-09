@@ -29,7 +29,11 @@ src/letta_starter/       # Python backend
   observability/         # Logging, metrics, tracing (Langfuse)
   config/                # Pydantic settings from env
   main.py                # CLI entry point
-config/courses/          # TOML course configs (background agents, triggers)
+config/courses/          # TOML course configs (see docs/config-schema.md)
+  {course-id}/           # Course directory
+    course.toml          # Main config (agent, blocks, background agents)
+    modules/             # Module and lesson definitions
+curriculum/              # Curriculum system (schema, loader, dynamic blocks)
 tests/                   # Pytest suite (including tests/test_server/)
 ```
 
@@ -94,7 +98,12 @@ Requires Letta server: `pip install letta && letta server`
 - `src/letta_starter/tools/memory.py` - edit_memory_block tool for agent-driven memory updates
 - `src/letta_starter/background/schema.py` - Pydantic schemas for TOML course configuration
 - `src/letta_starter/background/runner.py` - BackgroundAgentRunner execution engine
-- `config/courses/college-essay.toml` - Example course configuration with background agents
+- `src/letta_starter/curriculum/schema.py` - Full curriculum schema (CourseConfig, blocks, lessons)
+- `src/letta_starter/curriculum/blocks.py` - Dynamic memory block generation from TOML
+- `src/letta_starter/curriculum/loader.py` - TOML loading and caching
+- `src/letta_starter/server/curriculum.py` - HTTP endpoints for curriculum management
+- `config/courses/college-essay/course.toml` - College essay course configuration
+- `docs/config-schema.md` - Complete TOML configuration reference
 - `pyproject.toml` - Dependencies and tool config
 - `.env.example` - Required environment variables
 

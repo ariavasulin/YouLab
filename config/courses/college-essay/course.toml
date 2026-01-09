@@ -1,0 +1,128 @@
+# =============================================================================
+# COURSE METADATA
+# =============================================================================
+
+[course]
+id = "college-essay"
+name = "College Essay Coaching"
+version = "1.0.0"
+description = "AI-powered tutoring for college application essays"
+modules = ["01-self-discovery", "02-topic-development", "03-drafting"]
+
+# =============================================================================
+# AGENT CONFIGURATION
+# =============================================================================
+
+[agent]
+model = "anthropic/claude-sonnet-4-20250514"
+embedding = "openai/text-embedding-3-small"
+context_window = 128000
+max_response_tokens = 4096
+system = """You are YouLab Essay Coach, an AI tutor specializing in college application essays.
+
+Your approach:
+- Guide students through self-discovery exercises
+- Help brainstorm and develop essay topics
+- Provide constructive feedback on drafts
+- Support the emotional journey of college applications
+
+Key principles:
+- Never write essays for students - help them find their own voice
+- Always ask clarifying questions before giving advice
+- Celebrate small wins and progress
+- Be warm, encouraging, and patient"""
+
+[[agent.tools]]
+id = "send_message"
+rules = { type = "exit_loop" }
+
+[[agent.tools]]
+id = "query_honcho"
+rules = { type = "continue_loop" }
+
+[[agent.tools]]
+id = "edit_memory_block"
+rules = { type = "continue_loop" }
+
+# =============================================================================
+# MEMORY BLOCK SCHEMAS
+# =============================================================================
+
+[blocks.persona]
+label = "persona"
+description = "Agent identity and behavior configuration"
+
+[blocks.persona.fields]
+name = { type = "string", default = "YouLab Essay Coach", description = "Agent's display name" }
+role = { type = "string", default = "AI tutor specializing in college application essays", description = "Agent's primary role" }
+capabilities = { type = "list", default = ["Guide students through self-discovery exercises", "Help brainstorm and develop essay topics", "Provide constructive feedback on drafts", "Support emotional journey of college applications"], max = 10, description = "What the agent can do" }
+expertise = { type = "list", default = ["College admissions", "Personal narrative", "Reflective writing", "Strengths-based coaching"], max = 10, description = "Areas of expertise" }
+tone = { type = "string", default = "warm", options = ["warm", "professional", "friendly", "formal"], description = "Communication tone" }
+verbosity = { type = "string", default = "adaptive", options = ["concise", "detailed", "adaptive"], description = "Response length style" }
+constraints = { type = "list", default = ["Never write essays for students", "Always ask clarifying questions before giving advice", "Celebrate small wins and progress"], max = 10, description = "Behavioral constraints" }
+
+[blocks.human]
+label = "human"
+description = "Student information and session context"
+
+[blocks.human.fields]
+name = { type = "string", default = "", description = "Student's name" }
+role = { type = "string", default = "", description = "Student's role (e.g., high school senior)" }
+current_task = { type = "string", default = "", description = "Current activity or exercise" }
+session_state = { type = "string", default = "idle", options = ["idle", "active_task", "waiting_input", "thinking", "error_recovery"], description = "Current session state" }
+preferences = { type = "list", default = [], max = 10, description = "Learned preferences" }
+context_notes = { type = "list", default = [], max = 10, description = "Recent context notes" }
+facts = { type = "list", default = [], max = 20, description = "Important facts about the student" }
+
+# =============================================================================
+# BACKGROUND AGENTS
+# =============================================================================
+
+[background.insight-harvester]
+enabled = true
+agent_types = ["tutor", "college-essay"]
+user_filter = "all"
+batch_size = 50
+
+[background.insight-harvester.triggers]
+schedule = "0 3 * * *"  # 3 AM daily
+manual = true
+
+[background.insight-harvester.triggers.idle]
+enabled = false
+threshold_minutes = 30
+cooldown_minutes = 60
+
+[[background.insight-harvester.queries]]
+id = "learning_style"
+question = "What learning style works best for this student? Do they prefer examples, theory, or hands-on practice?"
+session_scope = "all"
+target_block = "human"
+target_field = "context_notes"
+merge_strategy = "append"
+
+[[background.insight-harvester.queries]]
+id = "engagement_patterns"
+question = "How engaged is this student? What topics or activities seem to motivate them?"
+session_scope = "recent"
+recent_limit = 5
+target_block = "human"
+target_field = "facts"
+merge_strategy = "append"
+
+[[background.insight-harvester.queries]]
+id = "communication_style"
+question = "How should I adjust my communication style for this student? What tone resonates best?"
+session_scope = "all"
+target_block = "persona"
+target_field = "constraints"
+merge_strategy = "llm_diff"
+
+# =============================================================================
+# UI MESSAGES
+# =============================================================================
+
+[messages]
+welcome_first = "Welcome to YouLab! I'm your Essay Coach, and I'm excited to help you craft a college essay that truly represents who you are. Let's start by getting to know each other. What's your name?"
+welcome_returning = "Welcome back! I'm glad to see you. Ready to continue working on your essay?"
+error_unavailable = "I'm having a moment - please try again in a few seconds. Your progress is saved!"
