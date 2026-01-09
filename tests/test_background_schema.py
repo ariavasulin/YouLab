@@ -1,19 +1,12 @@
-"""Tests for background agent TOML schema."""
+"""Tests for background agent schema (now in curriculum.schema)."""
 
-from pathlib import Path
-
-import pytest
-
-from letta_starter.background.schema import (
+from letta_starter.curriculum.schema import (
     BackgroundAgentConfig,
-    CourseConfig,
     DialecticQuery,
     IdleTrigger,
     MergeStrategy,
     SessionScope,
     Triggers,
-    load_all_course_configs,
-    load_course_config,
 )
 
 
@@ -108,10 +101,12 @@ class TestBackgroundAgentConfig:
     """Tests for BackgroundAgentConfig model."""
 
     def test_minimal_config(self):
-        """Test BackgroundAgentConfig with minimal fields."""
-        config = BackgroundAgentConfig(id="test-agent", name="Test Agent")
-        assert config.id == "test-agent"
-        assert config.name == "Test Agent"
+        """Test BackgroundAgentConfig with minimal fields.
+
+        Note: In curriculum schema, agent configs don't have id/name fields.
+        The id comes from the dict key in course.background.
+        """
+        config = BackgroundAgentConfig()
         assert config.enabled is True
         assert config.agent_types == ["tutor"]
         assert config.user_filter == "all"
@@ -127,142 +122,20 @@ class TestBackgroundAgentConfig:
             target_field="facts",
         )
         config = BackgroundAgentConfig(
-            id="harvester",
-            name="Harvester",
             queries=[query],
         )
         assert len(config.queries) == 1
         assert config.queries[0].id == "q1"
 
+    def test_disabled_config(self):
+        """Test BackgroundAgentConfig when disabled."""
+        config = BackgroundAgentConfig(enabled=False)
+        assert config.enabled is False
 
-class TestCourseConfig:
-    """Tests for CourseConfig model."""
-
-    def test_minimal_config(self):
-        """Test CourseConfig with minimal fields."""
-        config = CourseConfig(id="test-course", name="Test Course")
-        assert config.id == "test-course"
-        assert config.name == "Test Course"
-        assert config.background_agents == []
-
-    def test_with_agents(self):
-        """Test CourseConfig with background agents."""
-        agent = BackgroundAgentConfig(id="agent1", name="Agent 1")
-        config = CourseConfig(
-            id="course1",
-            name="Course 1",
-            background_agents=[agent],
+    def test_custom_triggers(self):
+        """Test BackgroundAgentConfig with custom triggers."""
+        config = BackgroundAgentConfig(
+            triggers=Triggers(schedule="0 */6 * * *", manual=False),
         )
-        assert len(config.background_agents) == 1
-
-
-class TestLoadCourseConfig:
-    """Tests for TOML loading functions."""
-
-    def test_load_valid_toml(self, tmp_path):
-        """Test loading a valid TOML file."""
-        toml_content = """
-id = "test-course"
-name = "Test Course"
-
-[[background_agents]]
-id = "test-agent"
-name = "Test Agent"
-enabled = true
-
-[[background_agents.queries]]
-id = "q1"
-question = "What is the learning style?"
-target_block = "human"
-target_field = "context_notes"
-"""
-        toml_file = tmp_path / "test.toml"
-        toml_file.write_text(toml_content)
-
-        config = load_course_config(toml_file)
-
-        assert config.id == "test-course"
-        assert config.name == "Test Course"
-        assert len(config.background_agents) == 1
-        assert config.background_agents[0].id == "test-agent"
-        assert len(config.background_agents[0].queries) == 1
-
-    def test_load_minimal_toml(self, tmp_path):
-        """Test loading minimal TOML file."""
-        toml_content = """
-id = "minimal"
-name = "Minimal Course"
-"""
-        toml_file = tmp_path / "minimal.toml"
-        toml_file.write_text(toml_content)
-
-        config = load_course_config(toml_file)
-        assert config.id == "minimal"
-        assert config.background_agents == []
-
-    def test_load_missing_file(self, tmp_path):
-        """Test loading non-existent file raises error."""
-        with pytest.raises(FileNotFoundError):
-            load_course_config(tmp_path / "nonexistent.toml")
-
-    def test_load_all_configs(self, tmp_path):
-        """Test loading all configs from directory."""
-        # Create two TOML files
-        (tmp_path / "course1.toml").write_text('id = "course1"\nname = "Course 1"')
-        (tmp_path / "course2.toml").write_text('id = "course2"\nname = "Course 2"')
-
-        configs = load_all_course_configs(tmp_path)
-
-        assert len(configs) == 2
-        assert "course1" in configs
-        assert "course2" in configs
-
-    def test_load_all_configs_empty_dir(self, tmp_path):
-        """Test loading from empty directory."""
-        configs = load_all_course_configs(tmp_path)
-        assert configs == {}
-
-    def test_load_all_configs_nonexistent_dir(self, tmp_path):
-        """Test loading from non-existent directory."""
-        configs = load_all_course_configs(tmp_path / "nonexistent")
-        assert configs == {}
-
-    def test_load_all_configs_skips_invalid(self, tmp_path):
-        """Test that invalid TOML files are skipped."""
-        # Valid file
-        (tmp_path / "valid.toml").write_text('id = "valid"\nname = "Valid"')
-        # Invalid file (missing required fields)
-        (tmp_path / "invalid.toml").write_text("not_valid = true")
-
-        configs = load_all_course_configs(tmp_path)
-
-        assert len(configs) == 1
-        assert "valid" in configs
-
-
-class TestCollegeEssayConfig:
-    """Tests for the actual college-essay.toml config."""
-
-    def test_load_college_essay_config(self):
-        """Test loading the example college-essay.toml."""
-        config_path = Path("config/courses/college-essay.toml")
-
-        if not config_path.exists():
-            pytest.skip("college-essay.toml not found")
-
-        config = load_course_config(config_path)
-
-        assert config.id == "college-essay"
-        assert config.name == "College Essay Coaching"
-        assert len(config.background_agents) == 1
-
-        agent = config.background_agents[0]
-        assert agent.id == "insight-harvester"
-        assert agent.enabled is True
-        assert len(agent.queries) == 3
-
-        # Verify query structure
-        query_ids = [q.id for q in agent.queries]
-        assert "learning_style" in query_ids
-        assert "engagement_patterns" in query_ids
-        assert "communication_style" in query_ids
+        assert config.triggers.schedule == "0 */6 * * *"
+        assert config.triggers.manual is False

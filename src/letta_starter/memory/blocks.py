@@ -3,9 +3,15 @@ Memory block schemas and serialization.
 
 This is the heart of context engineering - structured, validated memory blocks
 that maximize the utility of every token in the LLM's context window.
+
+.. deprecated::
+    PersonaBlock, HumanBlock, and pre-configured personas are deprecated.
+    Use TOML-defined blocks via curriculum loader instead.
+    See config/courses/*/course.toml for block schema definitions.
 """
 
 import contextlib
+import warnings
 from enum import Enum
 from typing import Any
 
@@ -99,6 +105,15 @@ class PersonaBlock(BaseModel):
 
         result = "\n".join(lines)
         return result[:max_chars]
+
+    def model_post_init(self, _context: Any, /) -> None:
+        """Emit deprecation warning on instantiation."""
+        warnings.warn(
+            "PersonaBlock is deprecated. Use TOML-defined blocks via curriculum loader instead. "
+            "See config/courses/*/course.toml for block schema definitions.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
 
     @classmethod
     def from_memory_string(cls, memory_str: str) -> "PersonaBlock":
@@ -241,6 +256,15 @@ class HumanBlock(BaseModel):
         self.current_task = None
         self.session_state = SessionState.IDLE
 
+    def model_post_init(self, _context: Any, /) -> None:
+        """Emit deprecation warning on instantiation."""
+        warnings.warn(
+            "HumanBlock is deprecated. Use TOML-defined blocks via curriculum loader instead. "
+            "See config/courses/*/course.toml for block schema definitions.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
     @classmethod
     def from_memory_string(cls, memory_str: str) -> "HumanBlock":
         """Parse a memory string back into a HumanBlock (best effort)."""
@@ -275,6 +299,15 @@ class HumanBlock(BaseModel):
 
 
 # Pre-configured personas for common use cases
+# DEPRECATED: Use TOML course configuration instead.
+# These are kept for backwards compatibility but will be removed in a future version.
+warnings.warn(
+    "Pre-configured personas (DEFAULT_PERSONA, CODING_ASSISTANT_PERSONA, "
+    "RESEARCH_ASSISTANT_PERSONA) are deprecated. Use TOML course configuration instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 DEFAULT_PERSONA = PersonaBlock(
     name="Assistant",
     role="General-purpose AI assistant",

@@ -5,7 +5,7 @@ from datetime import datetime
 import pytest
 
 from letta_starter.background.runner import BackgroundAgentRunner, RunResult
-from letta_starter.background.schema import (
+from letta_starter.curriculum.schema import (
     BackgroundAgentConfig,
     DialecticQuery,
     MergeStrategy,
@@ -105,8 +105,6 @@ def runner(mock_letta_client, mock_honcho_client):
 def sample_config():
     """Create a sample background agent config."""
     return BackgroundAgentConfig(
-        id="test-harvester",
-        name="Test Harvester",
         enabled=True,
         triggers=Triggers(manual=True),
         agent_types=["tutor"],
@@ -121,6 +119,10 @@ def sample_config():
             ),
         ],
     )
+
+
+# Default agent_id for testing (config no longer has id field)
+TEST_AGENT_ID = "test-harvester"
 
 
 class TestRunResult:
@@ -147,9 +149,9 @@ class TestBackgroundAgentRunner:
         """Test running a disabled agent returns early."""
         sample_config.enabled = False
 
-        result = await runner.run_agent(sample_config)
+        result = await runner.run_agent(sample_config, agent_id=TEST_AGENT_ID)
 
-        assert result.agent_id == "test-harvester"
+        assert result.agent_id == TEST_AGENT_ID
         assert "disabled" in result.errors[0].lower()
         assert result.users_processed == 0
 
@@ -158,7 +160,7 @@ class TestBackgroundAgentRunner:
         """Test running without Honcho client returns early."""
         runner = BackgroundAgentRunner(mock_letta_client, None)
 
-        result = await runner.run_agent(sample_config)
+        result = await runner.run_agent(sample_config, agent_id=TEST_AGENT_ID)
 
         assert "Honcho" in result.errors[0]
         assert result.users_processed == 0
@@ -166,7 +168,7 @@ class TestBackgroundAgentRunner:
     @pytest.mark.asyncio
     async def test_run_processes_users(self, runner, sample_config, mock_honcho_client):
         """Test running agent processes all users."""
-        result = await runner.run_agent(sample_config)
+        result = await runner.run_agent(sample_config, agent_id=TEST_AGENT_ID)
 
         assert result.users_processed == 2
         assert result.queries_executed == 2  # 1 query * 2 users
@@ -175,7 +177,7 @@ class TestBackgroundAgentRunner:
     @pytest.mark.asyncio
     async def test_run_applies_enrichments(self, runner, sample_config, mock_letta_client):
         """Test running agent applies enrichments."""
-        result = await runner.run_agent(sample_config)
+        result = await runner.run_agent(sample_config, agent_id=TEST_AGENT_ID)
 
         assert result.enrichments_applied == 2
         # Check that memory was updated
@@ -184,7 +186,7 @@ class TestBackgroundAgentRunner:
     @pytest.mark.asyncio
     async def test_run_with_specific_users(self, runner, sample_config):
         """Test running agent for specific users."""
-        result = await runner.run_agent(sample_config, user_ids=["user1"])
+        result = await runner.run_agent(sample_config, user_ids=["user1"], agent_id=TEST_AGENT_ID)
 
         assert result.users_processed == 1
         assert result.queries_executed == 1
@@ -193,7 +195,9 @@ class TestBackgroundAgentRunner:
     async def test_run_handles_missing_agent(self, runner, sample_config):
         """Test handling when agent for user is not found."""
         # Run for user that doesn't have an agent
-        result = await runner.run_agent(sample_config, user_ids=["unknown_user"])
+        result = await runner.run_agent(
+            sample_config, user_ids=["unknown_user"], agent_id=TEST_AGENT_ID
+        )
 
         assert result.users_processed == 1
         assert result.enrichments_applied == 0
@@ -209,7 +213,7 @@ class TestBackgroundAgentRunner:
 
         runner = BackgroundAgentRunner(mock_letta_client, FailingHonchoClient())
 
-        result = await runner.run_agent(sample_config, user_ids=["user1"])
+        result = await runner.run_agent(sample_config, user_ids=["user1"], agent_id=TEST_AGENT_ID)
 
         assert result.queries_executed == 1
         assert result.enrichments_applied == 0
@@ -219,8 +223,6 @@ class TestBackgroundAgentRunner:
     async def test_run_multiple_queries(self, runner, mock_honcho_client):
         """Test running agent with multiple queries."""
         config = BackgroundAgentConfig(
-            id="multi-query",
-            name="Multi Query",
             queries=[
                 DialecticQuery(
                     id="q1",
@@ -237,7 +239,7 @@ class TestBackgroundAgentRunner:
             ],
         )
 
-        result = await runner.run_agent(config, user_ids=["user1"])
+        result = await runner.run_agent(config, user_ids=["user1"], agent_id="multi-query")
 
         assert result.queries_executed == 2
         assert len(mock_honcho_client.queries) == 2
@@ -251,8 +253,6 @@ class TestBackgroundAgentRunner:
         ]
 
         config = BackgroundAgentConfig(
-            id="batched",
-            name="Batched",
             batch_size=2,
             queries=[
                 DialecticQuery(
@@ -264,7 +264,7 @@ class TestBackgroundAgentRunner:
             ],
         )
 
-        result = await runner.run_agent(config)
+        result = await runner.run_agent(config, agent_id="batched")
 
         # Should process all 5 users in batches of 2
         assert result.users_processed == 5
@@ -272,7 +272,7 @@ class TestBackgroundAgentRunner:
     @pytest.mark.asyncio
     async def test_run_records_timing(self, runner, sample_config):
         """Test that run records timing information."""
-        result = await runner.run_agent(sample_config, user_ids=["user1"])
+        result = await runner.run_agent(sample_config, user_ids=["user1"], agent_id=TEST_AGENT_ID)
 
         assert result.started_at is not None
         assert result.completed_at is not None
@@ -297,8 +297,6 @@ class TestGetTargetUsers:
         mock_letta_client.agents.append(MockAgent("agent-3", "youlab_user1_assistant"))
 
         config = BackgroundAgentConfig(
-            id="test",
-            name="Test",
             agent_types=["tutor", "assistant"],
         )
 

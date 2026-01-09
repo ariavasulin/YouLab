@@ -1,12 +1,27 @@
-"""Agent templates for YouLab."""
+"""
+Agent templates for YouLab.
 
+.. deprecated::
+    This module is deprecated. Use TOML course configuration instead.
+    See config/courses/default/course.toml for the default template.
+"""
+
+import warnings
 from collections.abc import Callable
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock
-from letta_starter.tools import edit_memory_block, query_honcho
+warnings.warn(
+    "letta_starter.agents.templates is deprecated. "
+    "Use TOML course configuration instead. "
+    "See config/courses/default/course.toml for the default template.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from letta_starter.memory.blocks import HumanBlock, PersonaBlock  # noqa: E402
+from letta_starter.tools import edit_memory_block, query_honcho  # noqa: E402
 
 
 class AgentTemplate(BaseModel):

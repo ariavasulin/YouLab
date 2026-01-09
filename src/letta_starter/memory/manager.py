@@ -6,16 +6,29 @@ This is the central coordinator for all memory operations:
 - Context rotation (core -> archival)
 - Memory optimization
 - Cross-session persistence
+
+.. deprecated::
+    This module is deprecated. Use agent-driven memory via edit_memory_block tool instead.
+    See docs/Memory-System.md for the recommended approach.
 """
 
 import time
+import warnings
 from datetime import datetime
 from typing import Any
 
 import structlog
 
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock
-from letta_starter.memory.strategies import (
+warnings.warn(
+    "letta_starter.memory.manager is deprecated. "
+    "Use agent-driven memory via edit_memory_block tool instead. "
+    "See docs/Memory-System.md for the recommended approach.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from letta_starter.memory.blocks import HumanBlock, PersonaBlock  # noqa: E402
+from letta_starter.memory.strategies import (  # noqa: E402
     AdaptiveRotation,
     ContextMetrics,
     ContextStrategy,
