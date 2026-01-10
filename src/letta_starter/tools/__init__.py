@@ -9,6 +9,7 @@ This module provides:
 from enum import Enum
 from typing import NamedTuple
 
+from letta_starter.tools.curriculum import advance_lesson
 from letta_starter.tools.dialectic import query_honcho
 from letta_starter.tools.memory import edit_memory_block
 
@@ -49,6 +50,11 @@ TOOL_REGISTRY: dict[str, ToolMetadata] = {
         "edit_memory_block",
         ToolRule.CONTINUE_LOOP,
         "Update a field in the agent's memory block",
+    ),
+    "advance_lesson": ToolMetadata(
+        "advance_lesson",
+        ToolRule.CONTINUE_LOOP,
+        "Request advancement to the next lesson in the curriculum",
     ),
 }
 
@@ -92,6 +98,7 @@ __all__ = [
     "TOOL_REGISTRY",
     "ToolMetadata",
     "ToolRule",
+    "advance_lesson",
     "edit_memory_block",
     "get_tool_rule",
     "query_honcho",

@@ -19,16 +19,17 @@ class TestV2SchemaLoading:
         # Verify agent config
         assert course.id == "college-essay"
         assert course.name == "College Essay Coaching"
-        assert course.version == "1.0.0"
-        assert course.agent.model == "anthropic/claude-sonnet-4-20250514"
+        assert course.version == "2.0.0"
+        assert course.agent.model == "openai/gpt-4o"
         assert len(course.agent.modules) == 3
 
         # Verify tools with default rules from registry
-        assert len(course.agent.tools) == 3
+        assert len(course.agent.tools) == 4
         tool_ids = [t.id for t in course.agent.tools]
         assert "send_message" in tool_ids
         assert "query_honcho" in tool_ids
         assert "edit_memory_block" in tool_ids
+        assert "advance_lesson" in tool_ids
 
         # Verify tool rules are applied from registry
         send_msg_tool = next(t for t in course.agent.tools if t.id == "send_message")
@@ -40,22 +41,30 @@ class TestV2SchemaLoading:
         course = loader.load_course("college-essay")
 
         # Verify blocks loaded
-        assert "persona" in course.blocks
-        assert "human" in course.blocks
+        assert "student" in course.blocks
+        assert "engagement_strategy" in course.blocks
+        assert "journey" in course.blocks
 
-        # Check persona block
-        persona = course.blocks["persona"]
-        assert persona.label == "persona"
-        assert persona.shared is False
-        assert "name" in persona.fields
-        assert persona.fields["name"].default == "YouLab Essay Coach"
-        assert persona.fields["tone"].options == ["warm", "professional", "friendly", "formal"]
+        # Check student block (maps to human label)
+        student = course.blocks["student"]
+        assert student.label == "human"
+        assert student.shared is False
+        assert "profile" in student.fields
+        assert "insights" in student.fields
 
-        # Check human block
-        human = course.blocks["human"]
-        assert human.label == "human"
-        assert human.shared is False
-        assert human.fields["facts"].max == 20
+        # Check engagement_strategy block (maps to persona label)
+        engagement = course.blocks["engagement_strategy"]
+        assert engagement.label == "persona"
+        assert engagement.shared is False
+        assert "approach" in engagement.fields
+
+        # Check journey block
+        journey = course.blocks["journey"]
+        assert journey.label == "journey"
+        assert journey.shared is False
+        assert "module_id" in journey.fields
+        assert "lesson_id" in journey.fields
+        assert journey.fields["milestones"].max == 30
 
     def test_load_v2_tasks(self):
         """Test that v2 [[task]] array loads correctly."""
@@ -66,30 +75,38 @@ class TestV2SchemaLoading:
         assert len(course.tasks) == 1
 
         task = course.tasks[0]
-        assert task.schedule == "0 3 * * *"
+        # New task uses on_idle instead of schedule
+        assert task.on_idle is True
+        assert task.idle_threshold_minutes == 5
         assert task.manual is True
         assert task.agent_types == ["tutor", "college-essay"]
         assert task.batch_size == 50
 
-        # Verify queries
-        assert len(task.queries) == 3
+        # Verify queries - now 4 queries for the grader
+        assert len(task.queries) == 4
 
-        # Check first query
+        # Check first query - journey.grader_notes
         q1 = task.queries[0]
-        assert q1.target == "human.context_notes"
-        assert q1.target_block == "human"
-        assert q1.target_field == "context_notes"
+        assert q1.target == "journey.grader_notes"
+        assert q1.target_block == "journey"
+        assert q1.target_field == "grader_notes"
         assert q1.scope == SessionScope.ALL
-        assert q1.merge == MergeStrategy.APPEND
+        assert q1.merge == MergeStrategy.REPLACE
 
-        # Check second query with recent scope
+        # Check second query - journey.blockers
         q2 = task.queries[1]
-        assert q2.scope == SessionScope.RECENT
-        assert q2.recent_limit == 5
+        assert q2.target == "journey.blockers"
+        assert q2.merge == MergeStrategy.REPLACE
 
-        # Check third query with llm_diff merge
+        # Check third query - student.insights with append
         q3 = task.queries[2]
-        assert q3.merge == MergeStrategy.LLM_DIFF
+        assert q3.target == "student.insights"
+        assert q3.merge == MergeStrategy.APPEND
+
+        # Check fourth query - engagement_strategy.approach with llm_diff
+        q4 = task.queries[3]
+        assert q4.target == "engagement_strategy.approach"
+        assert q4.merge == MergeStrategy.LLM_DIFF
 
 
 class TestV1Compatibility:

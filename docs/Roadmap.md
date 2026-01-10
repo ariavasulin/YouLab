@@ -161,7 +161,7 @@ Chat title extraction and management for thread context.
 
 ### What's NOT Included (Simplified Scope)
 
-Original plan included complex title parsing ("Module 1 / Lesson 2" format), context caching, and memory block updates. These were deferred as:
+Original plan included complex title parsing ("Module 1 / Step 2" format), context caching, and memory block updates. These were deferred as:
 - 1:1 OpenWebUI→Honcho thread mapping simplifies architecture
 - Primary course uses single thread
 - Title metadata already flows through system
@@ -175,7 +175,7 @@ Load course definitions from TOML files.
 ### Deliverables
 
 - [x] Define curriculum in TOML with course.toml and modules/
-- [x] Parse into Pydantic schemas (CourseConfig, ModuleConfig, LessonConfig)
+- [x] Parse into Pydantic schemas (CourseConfig, ModuleConfig, StepConfig)
 - [x] Hot-reload on API endpoint
 - [x] Dynamic memory block generation from schema
 - [x] HTTP endpoints for curriculum management
@@ -226,7 +226,7 @@ Handle new student first-time experience.
 1. Welcome message
 2. Collect basic info (name, goals)
 3. Explain system capabilities
-4. First lesson setup
+4. First step setup
 
 ---
 

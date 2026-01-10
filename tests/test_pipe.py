@@ -25,7 +25,7 @@ class TestPipeInit:
     def test_valves_default_values(self):
         """Test valves have correct defaults."""
         pipeline = Pipe()
-        assert pipeline.valves.AGENT_TYPE == "tutor"
+        assert pipeline.valves.AGENT_TYPE == "college-essay"
         assert pipeline.valves.ENABLE_LOGGING is True
         assert pipeline.valves.ENABLE_THINKING is True
 
@@ -135,7 +135,7 @@ class TestEnsureAgentExists:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "agents": [{"agent_id": "existing-id", "agent_type": "tutor"}]
+            "agents": [{"agent_id": "existing-id", "agent_type": "college-essay"}]
         }
         mock_client.get.return_value = mock_response
 
@@ -268,7 +268,7 @@ class TestPipe:
             mock_get = MagicMock()
             mock_get.status_code = 200
             mock_get.json.return_value = {
-                "agents": [{"agent_id": "agent-123", "agent_type": "tutor"}]
+                "agents": [{"agent_id": "agent-123", "agent_type": "college-essay"}]
             }
             mock_client.get.return_value = mock_get
 
@@ -304,7 +304,7 @@ class TestPipe:
             mock_get = MagicMock()
             mock_get.status_code = 200
             mock_get.json.return_value = {
-                "agents": [{"agent_id": "agent-123", "agent_type": "tutor"}]
+                "agents": [{"agent_id": "agent-123", "agent_type": "college-essay"}]
             }
             mock_client.get.return_value = mock_get
 

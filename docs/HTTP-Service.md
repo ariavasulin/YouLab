@@ -477,7 +477,7 @@ Returns course metadata and structure.
   "version": "1.0.0",
   "description": "AI-powered tutoring for college application essays",
   "modules": [
-    {"id": "01-self-discovery", "name": "Self-Discovery", "lesson_count": 3}
+    {"id": "01-self-discovery", "name": "Self-Discovery", "step_count": 3}
   ],
   "blocks": [
     {"name": "persona", "label": "persona", "field_count": 7}
@@ -507,7 +507,7 @@ Returns complete course configuration as JSON (useful for debugging or UI editor
 GET /curriculum/courses/{course_id}/modules
 ```
 
-Returns all modules with full lesson details.
+Returns all modules with full step details.
 
 **Response**: List of `ModuleConfig` serialized to JSON.
 

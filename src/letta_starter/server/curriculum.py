@@ -33,7 +33,7 @@ class ModuleSummary(BaseModel):
     id: str
     name: str
     order: int
-    lesson_count: int
+    step_count: int
 
 
 class BlockSummary(BaseModel):
@@ -91,7 +91,7 @@ async def get_course(course_id: str) -> CourseDetailResponse:
             id=m.id,
             name=m.name,
             order=m.order,
-            lesson_count=len(m.lessons),
+            step_count=len(m.steps),
         )
         for m in course.loaded_modules
     ]
@@ -136,7 +136,7 @@ async def get_course_full(course_id: str) -> dict[str, Any]:
 
 @router.get("/courses/{course_id}/modules")
 async def get_course_modules(course_id: str) -> list[dict[str, Any]]:
-    """Get all modules for a course with full lesson details."""
+    """Get all modules for a course with full step details."""
     course = curriculum.get(course_id)
     if course is None:
         raise HTTPException(status_code=404, detail=f"Course not found: {course_id}")

@@ -21,6 +21,8 @@ Usage:
     block = PersonaBlock(name="Custom Name")
 """
 
+from pathlib import Path
+
 from letta_starter.curriculum.blocks import (
     DynamicBlock,
     create_block_model,
@@ -36,14 +38,14 @@ from letta_starter.curriculum.schema import (
     FieldSchema,
     FieldType,
     IdleTrigger,
-    LessonAgent,
-    LessonCompletion,
-    LessonConfig,
     MergeStrategy,
     MessagesConfig,
     ModuleConfig,
     QueryConfig,
     SessionScope,
+    StepAgent,
+    StepCompletion,
+    StepConfig,
     TaskConfig,
     ToolConfig,
     ToolRules,
@@ -61,25 +63,49 @@ class Curriculum:
     """
 
     def __init__(self) -> None:
-        self._loader = CurriculumLoader()
+        self._loader: CurriculumLoader | None = None
         self._block_registries: dict[str, dict[str, type[DynamicBlock]]] = {}
+
+    def initialize(self, config_dir: Path | str) -> None:
+        """
+        Initialize the curriculum with a config directory.
+
+        Args:
+            config_dir: Base directory for course configs.
+
+        """
+        self._loader = CurriculumLoader(config_dir)
+
+    def _ensure_loader(self) -> CurriculumLoader:
+        """Ensure loader is initialized, creating with defaults if needed."""
+        if self._loader is None:
+            self._loader = CurriculumLoader()
+        return self._loader
 
     def list_courses(self) -> list[str]:
         """List available course IDs."""
-        return self._loader.list_courses()
+        return self._ensure_loader().list_courses()
 
     def get(self, course_id: str) -> CourseConfig | None:
         """Get a course config, returning None if not found."""
-        return self._loader.get(course_id)
+        return self._ensure_loader().get(course_id)
 
     def load(self, course_id: str, force: bool = False) -> CourseConfig:
         """Load a course configuration."""
-        return self._loader.load_course(course_id, force=force)
+        return self._ensure_loader().load_course(course_id, force=force)
+
+    def load_all(self) -> list[str]:
+        """Load all available courses. Returns list of course IDs loaded."""
+        loader = self._ensure_loader()
+        courses = loader.list_courses()
+        for course_id in courses:
+            loader.load_course(course_id)
+        return courses
 
     def reload(self) -> int:
         """Reload all courses, clearing all caches. Returns count loaded."""
         self._block_registries.clear()
-        return self._loader.reload()
+        return self._ensure_loader().reload()
 
     def get_block_registry(self, course_id: str) -> dict[str, type[DynamicBlock]] | None:
         """
@@ -116,14 +142,14 @@ __all__ = [
     "FieldSchema",
     "FieldType",
     "IdleTrigger",
-    "LessonAgent",
-    "LessonCompletion",
-    "LessonConfig",
     "MergeStrategy",
     "MessagesConfig",
     "ModuleConfig",
     "QueryConfig",
     "SessionScope",
+    "StepAgent",
+    "StepCompletion",
+    "StepConfig",
     "TaskConfig",
     "ToolConfig",
     "ToolRuleType",
