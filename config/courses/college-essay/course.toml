@@ -74,6 +74,11 @@ Read your `journey` block to understand:
 # Tools with default rules from registry (v2 format)
 tools = ["send_message", "edit_memory_block", "advance_lesson", "query_honcho"]
 
+# Folder configuration for file access
+[agent.folders]
+shared = ["college-essay-materials"]  # Shared course materials (all users)
+private = true  # User gets a private folder for their work
+
 # =============================================================================
 # MEMORY BLOCK SCHEMAS (v2 format - field.* dotted keys)
 # =============================================================================
