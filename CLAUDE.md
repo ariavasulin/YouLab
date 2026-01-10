@@ -32,16 +32,31 @@ src/letta_starter/       # Python backend
 config/courses/          # TOML course configs (see docs/config-schema.md)
   {course-id}/           # Course directory
     course.toml          # Main config (agent, blocks, background agents)
-    modules/             # Module and lesson definitions
+    modules/             # Module and step definitions
 curriculum/              # Curriculum system (schema, loader, dynamic blocks)
 tests/                   # Pytest suite (including tests/test_server/)
 ```
 
-## Documentation
+## Documentation (Progressive Disclosure)
 
-/docs is religiously maintained and the unequivocal source of truth for anything related to this project. When answering questions and working on this project, consult the documentation here first and with highest precedence. 
+Don't memorize - look things up. Use `./hack/claude-docs.sh` to query docs.
 
-Assume thoughts it generally more up to date than anything in /thoughts unless told otherwise.
+```bash
+./hack/claude-docs.sh list              # See all docs with descriptions
+./hack/claude-docs.sh search "memory"   # Search for a topic
+./hack/claude-docs.sh show Architecture # Read a specific doc
+```
+
+**When to read what:**
+| Question | Read |
+|----------|------|
+| How does X work? | `docs/` - authoritative source of truth |
+| What's the current plan? | `thoughts/shared/plans/` |
+| Architecture decisions | `thoughts/shared/plans` |
+| Config/TOML syntax | `docs/config-schema.md` |
+| Implementation details | Search codebase directly |
+
+**Precedence**: `docs/` > `thoughts/shared/` > code comments
 
 ## Commands
 
@@ -77,34 +92,15 @@ Pre-commit hooks run `make verify` automatically - commits are blocked if checks
 
 Requires Letta server: `pip install letta && letta server`
 
-## Key Files
+## Key Entry Points
 
-- `src/letta_starter/memory/blocks.py` - PersonaBlock/HumanBlock schemas with serialization
-- `src/letta_starter/memory/strategies.py` - Context rotation (Aggressive/Preservative/Adaptive)
-- `src/letta_starter/memory/manager.py` - Memory lifecycle orchestration
-- `src/letta_starter/memory/enricher.py` - MemoryEnricher for external memory updates with audit trailing
-- `src/letta_starter/agents/base.py` - BaseAgent with integrated memory + tracing
-- `src/letta_starter/agents/default.py` - Factory functions + AgentRegistry
-- `src/letta_starter/agents/templates.py` - AgentTemplate + TUTOR_TEMPLATE for essay coaching
-- `src/letta_starter/server/main.py` - FastAPI app with /health, /agents, /chat, /background endpoints
-- `src/letta_starter/server/agents.py` - AgentManager for per-user Letta agents
-- `src/letta_starter/server/background.py` - Background agent HTTP endpoints
-- `src/letta_starter/server/strategy/manager.py` - StrategyManager singleton for RAG queries
-- `src/letta_starter/server/strategy/router.py` - FastAPI router: /strategy/documents, /ask, /health
-- `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI Pipeline integration
-- `src/letta_starter/config/settings.py` - Pydantic settings from environment
-- `src/letta_starter/honcho/client.py` - HonchoClient for message persistence + dialectic queries
-- `src/letta_starter/tools/dialectic.py` - query_honcho tool for in-conversation ToM queries
-- `src/letta_starter/tools/memory.py` - edit_memory_block tool for agent-driven memory updates
-- `src/letta_starter/background/runner.py` - BackgroundAgentRunner execution engine
-- `src/letta_starter/curriculum/schema.py` - Full curriculum schema (CourseConfig, blocks, lessons)
-- `src/letta_starter/curriculum/blocks.py` - Dynamic memory block generation from TOML
-- `src/letta_starter/curriculum/loader.py` - TOML loading and caching
-- `src/letta_starter/server/curriculum.py` - HTTP endpoints for curriculum management
-- `config/courses/college-essay/course.toml` - College essay course configuration
-- `docs/config-schema.md` - Complete TOML configuration reference
-- `pyproject.toml` - Dependencies and tool config
-- `.env.example` - Required environment variables
+Don't memorize file paths - search the codebase. Key entry points:
+
+- `src/letta_starter/server/main.py` - HTTP service entry point
+- `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI integration
+- `config/courses/college-essay/course.toml` - Course configuration
+
+For everything else: `./hack/claude-docs.sh search "<topic>"` or grep the codebase.
 
 ## Deprecated Code
 
@@ -121,37 +117,7 @@ The following modules are deprecated in favor of TOML-based configuration:
 
 These modules remain for backwards compatibility but emit `DeprecationWarning` on import.
 
-## Roadmap
-
-Current architecture with Honcho integration:
-
-```
-OpenWebUI (Pipe) → LettaStarter HTTP Service → Letta Server → Claude API
-                                             → Honcho (ToM layer)
-```
-
-**Full plan**: `thoughts/shared/plans/2025-12-26-youlab-technical-foundation.md`
-
-## Thoughts Directory
-
-The `thoughts/` directory is managed separately via `humanlayer thoughts` (not committed to this repo).
-
-```
-thoughts/
-  {username}/           # Personal notes
-  shared/               # Team notes
-    research/           # Research documents
-    plans/              # Implementation plans
-  global/               # Cross-repo notes
-  searchable/           # Auto-generated (NEVER write here)
-```
-
-**Important**: Never write to `thoughts/searchable/` — it gets wiped on every sync. Write to `thoughts/shared/` instead.
-
-**Context doc**: `thoughts/shared/youlab-project-context.md` — Full architecture decisions, open questions, and next steps.
-
 ## Linear
 
 Team: **Ariav** (`dd52dd50-3e8c-43c2-810f-d79c71933dc9`)
 Project: **YouLab** (`eac4c2fe-bee6-4784-9061-05aaba98409f`)
-Assignee: **ARI** (Ariav Asulin)
