@@ -193,12 +193,12 @@ class BlockSchema(BaseModel):
 
 
 # =============================================================================
-# LESSON & MODULE CONFIGURATION
+# STEP & MODULE CONFIGURATION
 # =============================================================================
 
 
-class LessonCompletion(BaseModel):
-    """Completion criteria for a lesson."""
+class StepCompletion(BaseModel):
+    """Completion criteria for a step."""
 
     required_fields: list[str] = Field(default_factory=list)
     min_turns: int | None = None
@@ -206,25 +206,26 @@ class LessonCompletion(BaseModel):
     auto_advance: bool = False
 
 
-class LessonAgent(BaseModel):
-    """Lesson-specific agent configuration."""
+class StepAgent(BaseModel):
+    """Step-specific agent configuration."""
 
     opening: str | None = None
     focus: list[str] = Field(default_factory=list)
     guidance: list[str] = Field(default_factory=list)
     persona_overrides: dict[str, Any] = Field(default_factory=dict)
+    disabled_tools: list[str] = Field(default_factory=list)
 
 
-class LessonConfig(BaseModel):
-    """Configuration for a single lesson."""
+class StepConfig(BaseModel):
+    """Configuration for a single step."""
 
     id: str
     name: str
     order: int = 0
     description: str = ""
     objectives: list[str] = Field(default_factory=list)
-    completion: LessonCompletion = Field(default_factory=LessonCompletion)
-    agent: LessonAgent = Field(default_factory=LessonAgent)
+    completion: StepCompletion = Field(default_factory=StepCompletion)
+    agent: StepAgent = Field(default_factory=StepAgent)
 
 
 class ModuleConfig(BaseModel):
@@ -234,7 +235,8 @@ class ModuleConfig(BaseModel):
     name: str
     order: int = 0
     description: str = ""
-    lessons: list[LessonConfig] = Field(default_factory=list)
+    steps: list[StepConfig] = Field(default_factory=list)
+    disabled_tools: list[str] = Field(default_factory=list)
 
 
 # =============================================================================

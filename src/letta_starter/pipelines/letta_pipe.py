@@ -26,8 +26,8 @@ class Pipe:
             description="URL of the LettaStarter HTTP service",
         )
         AGENT_TYPE: str = Field(
-            default="tutor",
-            description="Agent type to use",
+            default="college-essay",
+            description="Agent type to use (course_id)",
         )
         ENABLE_LOGGING: bool = Field(
             default=True,
@@ -215,10 +215,18 @@ class Pipe:
                     }
                 )
         except Exception as e:
-            if self.valves.ENABLE_LOGGING:
-                print(f"YouLab error: {e}")
-            if __event_emitter__:
-                await __event_emitter__({"type": "message", "data": {"content": f"Error: {e!s}"}})
+            error_str = str(e)
+            # Ignore "incomplete chunked read" - message was already delivered
+            if "incomplete chunked read" in error_str or "peer closed" in error_str:
+                if self.valves.ENABLE_LOGGING:
+                    print("YouLab: stream closed (message delivered)")
+            else:
+                if self.valves.ENABLE_LOGGING:
+                    print(f"YouLab error: {e}")
+                if __event_emitter__:
+                    await __event_emitter__(
+                        {"type": "message", "data": {"content": f"Error: {error_str}"}}
+                    )
 
         return ""
 

@@ -10,10 +10,10 @@ order = 3
 description = "Write and refine your college essay"
 
 # =============================================================================
-# LESSONS
+# STEPS
 # =============================================================================
 
-[[lessons]]
+[[steps]]
 id = "outline-structure"
 name = "Outline & Structure"
 order = 1
@@ -24,10 +24,10 @@ objectives = [
     "Plan the opening hook",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 4
 
-[lessons.agent]
+[steps.agent]
 opening = "Before we start writing, let's map out your essay. The best essays have a clear arc - a beginning that hooks, a middle that develops, and an end that resonates. How do you envision starting your story?"
 focus = ["structure", "planning", "flow"]
 guidance = [
@@ -36,7 +36,7 @@ guidance = [
     "Ensure there's a clear through-line",
 ]
 
-[[lessons]]
+[[steps]]
 id = "first-draft"
 name = "First Draft Support"
 order = 2
@@ -47,10 +47,10 @@ objectives = [
     "Maintain authentic voice",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 6
 
-[lessons.agent]
+[steps.agent]
 opening = "Time to write! Remember, the first draft doesn't need to be perfect - it just needs to exist. Start wherever feels natural. Would you like to tackle the opening first, or would it help to start with the moment you feel most connected to?"
 focus = ["writing", "voice", "momentum"]
 guidance = [
@@ -59,10 +59,10 @@ guidance = [
     "Preserve their authentic voice",
 ]
 
-[lessons.agent.persona_overrides]
+[steps.agent.persona_overrides]
 tone = "encouraging"
 
-[[lessons]]
+[[steps]]
 id = "feedback-revision"
 name = "Feedback & Revision"
 order = 3
@@ -73,10 +73,10 @@ objectives = [
     "Guide meaningful revisions",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 5
 
-[lessons.agent]
+[steps.agent]
 opening = "Congratulations on getting a draft down! That's a huge accomplishment. Let me read through what you have. Share it with me, and I'll give you my honest thoughts - what's working well and where we might want to dig deeper."
 focus = ["feedback", "revision", "improvement"]
 guidance = [
@@ -85,7 +85,7 @@ guidance = [
     "Focus on substance over style initially",
 ]
 
-[[lessons]]
+[[steps]]
 id = "polish-finalize"
 name = "Polish & Finalize"
 order = 4
@@ -96,10 +96,10 @@ objectives = [
     "Build confidence for submission",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 3
 
-[lessons.agent]
+[steps.agent]
 opening = "We're in the home stretch! Your essay has come so far. Let's do a final polish - checking for flow, trimming any excess, and making sure every word earns its place. How are you feeling about it?"
 focus = ["polishing", "confidence", "completion"]
 guidance = [

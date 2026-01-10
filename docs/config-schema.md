@@ -246,7 +246,7 @@ error_unavailable = "I'm having a moment - please try again in a few seconds."
 
 ## Module File Reference
 
-Module files define the curriculum structure with lessons.
+Module files define the curriculum structure with steps.
 
 ### [module] - Module Metadata
 
@@ -257,17 +257,17 @@ Module files define the curriculum structure with lessons.
 | order | int | no | 0 | Sort order |
 | description | string | no | "" | Module description |
 
-### [[lessons]] - Lesson Configuration
+### [[steps]] - Step Configuration
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| id | string | yes | - | Lesson identifier |
+| id | string | yes | - | Step identifier |
 | name | string | yes | - | Display name |
 | order | int | no | 0 | Sort order within module |
-| description | string | no | "" | Lesson description |
+| description | string | no | "" | Step description |
 | objectives | list[string] | no | [] | Learning objectives |
 
-### [lessons.completion] - Completion Criteria
+### [steps.completion] - Completion Criteria
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -276,14 +276,14 @@ Module files define the curriculum structure with lessons.
 | min_list_length | dict[string, int] | {} | Minimum items in list fields |
 | auto_advance | bool | false | Auto-advance when complete |
 
-### [lessons.agent] - Lesson-Specific Agent Config
+### [steps.agent] - Step-Specific Agent Config
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| opening | string | null | Opening message for this lesson |
+| opening | string | null | Opening message for this step |
 | focus | list[string] | [] | Topics to focus on |
 | guidance | list[string] | [] | Guidance for the agent |
-| persona_overrides | dict | {} | Override persona fields for this lesson |
+| persona_overrides | dict | {} | Override persona fields for this step |
 
 **Example module file:**
 ```toml
@@ -293,17 +293,17 @@ name = "Self-Discovery"
 order = 1
 description = "Explore who you are and what matters to you"
 
-[[lessons]]
+[[steps]]
 id = "welcome"
 name = "Welcome & Onboarding"
 order = 1
 objectives = ["Learn student's name", "Set expectations"]
 
-[lessons.completion]
+[steps.completion]
 required_fields = ["human.name"]
 min_turns = 3
 
-[lessons.agent]
+[steps.agent]
 opening = "Welcome! What's your name?"
 focus = ["introduction", "goals"]
 ```
@@ -317,7 +317,7 @@ The curriculum system exposes HTTP endpoints for management:
 - `GET /curriculum/courses` - List all courses
 - `GET /curriculum/courses/{id}` - Get course summary
 - `GET /curriculum/courses/{id}/full` - Get complete config as JSON
-- `GET /curriculum/courses/{id}/modules` - Get modules with lessons
+- `GET /curriculum/courses/{id}/modules` - Get modules with steps
 - `POST /curriculum/reload` - Hot-reload all configurations
 
 ---

@@ -22,13 +22,13 @@ from letta_starter.curriculum.schema import (
     FieldSchema,
     FieldType,
     IdleTrigger,
-    LessonAgent,
-    LessonCompletion,
-    LessonConfig,
     MessagesConfig,
     ModuleConfig,
     QueryConfig,
     SessionScope,
+    StepAgent,
+    StepCompletion,
+    StepConfig,
     TaskConfig,
     ToolConfig,
     ToolRules,
@@ -407,29 +407,30 @@ class CurriculumLoader:
             data = self._load_toml(module_file)
             module_data = data.get("module", {})
 
-            lessons = []
-            for lesson_data in data.get("lessons", []):
-                completion_data = lesson_data.get("completion", {})
-                agent_data = lesson_data.get("agent", {})
+            steps = []
+            for step_data in data.get("steps", []):
+                completion_data = step_data.get("completion", {})
+                agent_data = step_data.get("agent", {})
 
-                lessons.append(
-                    LessonConfig(
-                        id=lesson_data.get("id", ""),
-                        name=lesson_data.get("name", ""),
-                        order=lesson_data.get("order", 0),
-                        description=lesson_data.get("description", ""),
-                        objectives=lesson_data.get("objectives", []),
-                        completion=LessonCompletion(
+                steps.append(
+                    StepConfig(
+                        id=step_data.get("id", ""),
+                        name=step_data.get("name", ""),
+                        order=step_data.get("order", 0),
+                        description=step_data.get("description", ""),
+                        objectives=step_data.get("objectives", []),
+                        completion=StepCompletion(
                             required_fields=completion_data.get("required_fields", []),
                             min_turns=completion_data.get("min_turns"),
                             min_list_length=completion_data.get("min_list_length", {}),
                             auto_advance=completion_data.get("auto_advance", False),
                         ),
-                        agent=LessonAgent(
+                        agent=StepAgent(
                             opening=agent_data.get("opening"),
                             focus=agent_data.get("focus", []),
                             guidance=agent_data.get("guidance", []),
                             persona_overrides=agent_data.get("persona_overrides", {}),
+                            disabled_tools=agent_data.get("disabled_tools", []),
                         ),
                     )
                 )
@@ -440,7 +441,8 @@ class CurriculumLoader:
                     name=module_data.get("name", module_name),
                     order=module_data.get("order", 0),
                     description=module_data.get("description", ""),
-                    lessons=lessons,
+                    steps=steps,
+                    disabled_tools=module_data.get("disabled_tools", []),
                 )
             )
 

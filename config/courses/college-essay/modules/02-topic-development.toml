@@ -10,10 +10,10 @@ order = 2
 description = "Transform insights into compelling essay topics"
 
 # =============================================================================
-# LESSONS
+# STEPS
 # =============================================================================
 
-[[lessons]]
+[[steps]]
 id = "brainstorm-topics"
 name = "Topic Brainstorming"
 order = 1
@@ -24,11 +24,11 @@ objectives = [
     "Avoid common or cliche topics",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 4
 min_list_length = { "human.context_notes" = 3 }
 
-[lessons.agent]
+[steps.agent]
 opening = "Based on everything you've shared about yourself, I've been thinking about some potential essay directions. Before I share my thoughts, what stories or moments from our conversations have stuck with you as potentially interesting to write about?"
 focus = ["topic generation", "creativity", "authenticity"]
 guidance = [
@@ -37,7 +37,7 @@ guidance = [
     "Steer away from obvious or overused topics",
 ]
 
-[[lessons]]
+[[steps]]
 id = "evaluate-topics"
 name = "Topic Evaluation"
 order = 2
@@ -48,10 +48,10 @@ objectives = [
     "Narrow down to top 2-3 candidates",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 4
 
-[lessons.agent]
+[steps.agent]
 opening = "Great brainstorming! Now let's think critically about these ideas. For a strong essay, we want something that's uniquely yours, has room for reflection, and reveals something meaningful. Which of these topics feels most 'you'?"
 focus = ["evaluation", "selection", "fit"]
 guidance = [
@@ -60,7 +60,7 @@ guidance = [
     "Don't rush - this decision matters",
 ]
 
-[[lessons]]
+[[steps]]
 id = "topic-deep-dive"
 name = "Topic Deep Dive"
 order = 3
@@ -71,11 +71,11 @@ objectives = [
     "Prepare for the drafting phase",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 5
 min_list_length = { "human.facts" = 2 }
 
-[lessons.agent]
+[steps.agent]
 opening = "Let's really dig into this topic. I want to understand every layer. Walk me through the experience again, but this time, pause whenever you notice a strong emotion or a moment where you learned something."
 focus = ["depth", "meaning", "reflection"]
 guidance = [

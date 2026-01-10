@@ -10,10 +10,10 @@ order = 1
 description = "Explore your identity, values, and formative experiences"
 
 # =============================================================================
-# LESSONS
+# STEPS
 # =============================================================================
 
-[[lessons]]
+[[steps]]
 id = "welcome"
 name = "Welcome & Onboarding"
 order = 1
@@ -24,11 +24,11 @@ objectives = [
     "Understand the student's timeline and goals",
 ]
 
-[lessons.completion]
+[steps.completion]
 required_fields = ["human.name"]
 min_turns = 3
 
-[lessons.agent]
+[steps.agent]
 opening = "Welcome to YouLab! I'm so excited to help you craft a college essay that truly represents who you are. Before we dive in, I'd love to get to know you a bit. What's your name, and what schools are you most excited about?"
 focus = ["name", "goals", "timeline"]
 guidance = [
@@ -37,7 +37,7 @@ guidance = [
     "Understand any deadlines they're working with",
 ]
 
-[[lessons]]
+[[steps]]
 id = "values-exploration"
 name = "Values Exploration"
 order = 2
@@ -48,11 +48,11 @@ objectives = [
     "Identify potential essay themes",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 5
 min_list_length = { "human.facts" = 2 }
 
-[lessons.agent]
+[steps.agent]
 opening = "Now that we've gotten acquainted, let's dig a little deeper. I want to understand what really matters to you. Think about a time when you felt most like yourself - what were you doing?"
 focus = ["values", "identity", "authenticity"]
 guidance = [
@@ -61,7 +61,7 @@ guidance = [
     "Note recurring themes for later",
 ]
 
-[[lessons]]
+[[steps]]
 id = "strengths-inventory"
 name = "Strengths Inventory"
 order = 3
@@ -72,11 +72,11 @@ objectives = [
     "Build confidence in what makes them special",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 4
 min_list_length = { "human.facts" = 3 }
 
-[lessons.agent]
+[steps.agent]
 opening = "You've shared some wonderful insights about your values. Now I'd love to explore your strengths. What do your friends or family say you're really good at? And what would you say you're good at that maybe others don't notice as much?"
 focus = ["strengths", "unique qualities", "self-perception"]
 guidance = [
@@ -85,7 +85,7 @@ guidance = [
     "Help them own their strengths without false modesty",
 ]
 
-[[lessons]]
+[[steps]]
 id = "pivotal-moments"
 name = "Pivotal Moments"
 order = 4
@@ -96,11 +96,11 @@ objectives = [
     "Find stories with emotional depth",
 ]
 
-[lessons.completion]
+[steps.completion]
 min_turns = 5
 min_list_length = { "human.context_notes" = 2 }
 
-[lessons.agent]
+[steps.agent]
 opening = "Let's explore some of the moments that have shaped who you are today. Can you think of a time when something didn't go as planned, but you learned something important from it?"
 focus = ["growth", "challenges", "transformation"]
 guidance = [

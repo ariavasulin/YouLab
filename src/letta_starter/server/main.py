@@ -28,6 +28,7 @@ from letta_starter.server.schemas import (
 from letta_starter.server.strategy import init_strategy_manager
 from letta_starter.server.strategy import router as strategy_router
 from letta_starter.server.tracing import trace_chat, trace_generation
+from letta_starter.tools.curriculum import advance_lesson
 from letta_starter.tools.dialectic import query_honcho, set_honcho_client, set_user_context
 from letta_starter.tools.memory import edit_memory_block, set_letta_client
 
@@ -74,7 +75,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         client = app.state.agent_manager.client
         client.tools.upsert_from_function(func=query_honcho)
         client.tools.upsert_from_function(func=edit_memory_block)
-        log.info("custom_tools_registered", tools=["query_honcho", "edit_memory_block"])
+        client.tools.upsert_from_function(func=advance_lesson)
+        log.info(
+            "custom_tools_registered", tools=["query_honcho", "edit_memory_block", "advance_lesson"]
+        )
     except Exception as e:
         log.warning("custom_tools_registration_failed", error=str(e))
 
@@ -370,6 +374,9 @@ async def chat_stream(request: StreamChatRequest) -> StreamingResponse:
                 chat_title=request.chat_title,
                 agent_type=agent_type,
             )
+
+        # Yield empty to ensure clean stream termination
+        yield ""
 
     return StreamingResponse(
         stream_with_persistence(),
