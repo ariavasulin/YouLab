@@ -27,6 +27,7 @@ from letta_starter.server.schemas import (
 )
 from letta_starter.server.strategy import init_strategy_manager
 from letta_starter.server.strategy import router as strategy_router
+from letta_starter.server.sync import FileSyncService, set_file_sync, sync_router
 from letta_starter.server.tracing import trace_chat, trace_generation
 from letta_starter.tools.curriculum import advance_lesson
 from letta_starter.tools.dialectic import query_honcho, set_honcho_client, set_user_context
@@ -94,10 +95,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         config_dir=Path("config/courses"),
     )
 
+    # Initialize file sync service (if enabled)
+    sync_service: FileSyncService | None = None
+    if settings.file_sync_enabled:
+        sync_service = FileSyncService(
+            settings=settings,
+            letta=app.state.agent_manager.client,
+        )
+        set_file_sync(sync_service)
+        await sync_service.start()
+        app.state.sync_service = sync_service
+        log.info("file_sync_service_started")
+
     yield
 
     # Shutdown
     log.info("shutting_down_service")
+
+    # Stop sync service
+    if sync_service:
+        await sync_service.stop()
+        log.info("file_sync_service_stopped")
 
 
 app = FastAPI(
@@ -111,6 +129,7 @@ app = FastAPI(
 app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
 app.include_router(background_router)
 app.include_router(curriculum_router)
+app.include_router(sync_router)
 
 
 def get_agent_manager() -> AgentManager:

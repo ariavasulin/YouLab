@@ -74,6 +74,28 @@ class ToolConfig(BaseModel):
 
 
 # =============================================================================
+# FOLDER CONFIGURATION
+# =============================================================================
+
+
+class AgentFoldersConfig(BaseModel):
+    """
+    Configuration for agent folder access.
+
+    Controls which Letta folders are attached to agents for file access.
+    """
+
+    shared: list[str] = Field(
+        default_factory=list,
+        description="List of shared folder names to attach",
+    )
+    private: bool = Field(
+        default=True,
+        description="Whether to attach user's private folder",
+    )
+
+
+# =============================================================================
 # BACKGROUND AGENT CONFIGURATION
 # =============================================================================
 
@@ -278,6 +300,9 @@ class AgentConfig(BaseModel):
     context_window: int = 128000
     max_response_tokens: int = 4096
     system: str = ""
+
+    # Folder configuration (for file access)
+    folders: AgentFoldersConfig = Field(default_factory=AgentFoldersConfig)
 
     # v1: Full tool config with rules
     tools: list[ToolConfig] = Field(default_factory=list)

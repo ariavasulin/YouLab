@@ -169,3 +169,29 @@ class ServiceSettings(BaseSettings):
         default="demo",
         description="Honcho environment: demo, local, or production",
     )
+
+    # File sync configuration (OpenWebUI → Letta)
+    file_sync_enabled: bool = Field(
+        default=False,
+        description="Enable file sync from OpenWebUI to Letta",
+    )
+    openwebui_url: str = Field(
+        default="http://localhost:3000",
+        description="OpenWebUI base URL",
+    )
+    openwebui_api_key: str | None = Field(
+        default=None,
+        description="OpenWebUI API key for sync",
+    )
+    file_sync_interval: int = Field(
+        default=30,
+        description="Seconds between sync cycles",
+    )
+    file_sync_embedding_model: str = Field(
+        default="openai/text-embedding-3-small",
+        description="Embedding model for Letta folders (must match agent)",
+    )
+    data_dir: str = Field(
+        default=".data",
+        description="Directory for persistent data (sync mappings, etc.)",
+    )
