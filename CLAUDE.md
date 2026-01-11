@@ -35,6 +35,10 @@ config/courses/          # TOML course configs (see docs/config-schema.md)
     modules/             # Module and step definitions
 curriculum/              # Curriculum system (schema, loader, dynamic blocks)
 tests/                   # Pytest suite (including tests/test_server/)
+OpenWebUI/open-webui/    # Nested git repo (NOT a submodule)
+  src/lib/components/    # Svelte components (frontend changes here)
+  backend/               # Python backend + dev.sh
+  backend/data/          # SQLite DB, uploads (persists locally)
 ```
 
 ## Documentation (Progressive Disclosure)
@@ -54,6 +58,7 @@ Don't memorize - look things up. Use `./hack/claude-docs.sh` to query docs.
 | What's the current plan? | `thoughts/shared/plans/` |
 | Architecture decisions | `thoughts/shared/plans` |
 | Config/TOML syntax | `docs/config-schema.md` |
+| OpenWebUI frontend changes | `docs/OpenWebUI-Development.md` |
 | Implementation details | Search codebase directly |
 
 **Precedence**: `docs/` > `thoughts/shared/` > code comments
