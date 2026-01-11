@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from letta_starter.server.schemas import (
+from youlab_server.server.schemas import (
     AgentResponse,
     ChatRequest,
     CreateAgentRequest,

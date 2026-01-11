@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from letta_starter.server.agents import AgentManager
+from youlab_server.server.agents import AgentManager
 
 
 class TestAgentManagerNaming:
@@ -80,7 +80,7 @@ class TestAgentManagerCache:
 class TestAgentManagerCreate:
     """Tests for agent creation."""
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_create_agent_new(self, mock_curriculum, mock_letta_client):
         """Test creating a new agent uses curriculum path."""
         mock_letta_client.agents.list.return_value = []
@@ -106,7 +106,7 @@ class TestAgentManagerCreate:
         mock_curriculum.get.assert_called_with("default")
         mock_letta_client.agents.create.assert_called_once()
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_create_agent_already_exists(self, mock_curriculum, mock_letta_client):
         """Test creating agent when one already exists."""
         mock_agent = MagicMock()
@@ -123,7 +123,7 @@ class TestAgentManagerCreate:
         assert result == "existing-agent-id"
         mock_letta_client.agents.create.assert_not_called()
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_create_agent_unknown_type(self, mock_curriculum, mock_letta_client):
         """Test creating agent with unknown type raises error."""
         mock_letta_client.agents.list.return_value = []
@@ -135,7 +135,7 @@ class TestAgentManagerCreate:
         with pytest.raises(ValueError, match="Unknown course"):
             manager.create_agent("user123", "nonexistent_type")
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_create_agent_with_user_name(self, mock_curriculum, mock_letta_client):
         """Test agent creation includes user name in human block."""
         mock_letta_client.agents.list.return_value = []
@@ -182,7 +182,7 @@ class TestAgentManagerCreate:
 class TestAgentManagerSharedBlocks:
     """Tests for shared block functionality."""
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_shared_block_created_and_reused(self, mock_curriculum, mock_letta_client):
         """Test that shared blocks are created once and reused across agents."""
         mock_letta_client.agents.list.return_value = []
@@ -252,7 +252,7 @@ class TestAgentManagerSharedBlocks:
         agent_create_call = mock_letta_client.agents.create.call_args.kwargs
         assert agent_create_call["block_ids"] == ["shared-block-id"]
 
-    @patch("letta_starter.server.agents.curriculum")
+    @patch("youlab_server.server.agents.curriculum")
     def test_shared_block_found_in_letta(self, mock_curriculum, mock_letta_client):
         """Test that existing shared blocks in Letta are discovered."""
         mock_letta_client.agents.list.return_value = []

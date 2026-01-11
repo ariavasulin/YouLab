@@ -1,7 +1,7 @@
 """Tests for curriculum loader and v2 schema parsing."""
 
-from letta_starter.curriculum.loader import CurriculumLoader
-from letta_starter.curriculum.schema import (
+from youlab_server.curriculum.loader import CurriculumLoader
+from youlab_server.curriculum.schema import (
     MergeStrategy,
     SessionScope,
     ToolRuleType,

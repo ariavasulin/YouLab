@@ -2,7 +2,7 @@
 
 import pytest
 
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock
+from youlab_server.memory.blocks import HumanBlock, PersonaBlock
 
 
 @pytest.fixture

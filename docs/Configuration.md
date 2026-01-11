@@ -57,7 +57,7 @@ vim .env
 |----------|---------|-------------|
 | `LOG_LEVEL` | `INFO` | Level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `LOG_JSON` | `true` | JSON format (true for production) |
-| `SERVICE_NAME` | `letta-starter` | Service identifier |
+| `SERVICE_NAME` | `youlab` | Service identifier |
 
 ### Langfuse Tracing
 

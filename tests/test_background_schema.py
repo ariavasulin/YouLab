@@ -1,6 +1,6 @@
 """Tests for background agent schema (now in curriculum.schema)."""
 
-from letta_starter.curriculum.schema import (
+from youlab_server.curriculum.schema import (
     BackgroundAgentConfig,
     DialecticQuery,
     IdleTrigger,

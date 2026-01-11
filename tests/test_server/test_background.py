@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from letta_starter.background.runner import RunResult
-from letta_starter.curriculum.schema import (
+from youlab_server.background.runner import RunResult
+from youlab_server.curriculum.schema import (
     BackgroundAgentConfig,
     CourseConfig,
     DialecticQuery,
@@ -79,10 +79,10 @@ def mock_curriculum(sample_course_config):
 @pytest.fixture
 def background_test_client(mock_agent_manager, mock_background_runner, mock_curriculum):
     """Test client with background system initialized."""
-    from letta_starter.server import background as bg_module
-    from letta_starter.server.main import app
-    from letta_starter.server.strategy import StrategyManager
-    from letta_starter.server.strategy.router import get_strategy_manager
+    from youlab_server.server import background as bg_module
+    from youlab_server.server.main import app
+    from youlab_server.server.strategy import StrategyManager
+    from youlab_server.server.strategy.router import get_strategy_manager
 
     # Set up agent manager
     app.state.agent_manager = mock_agent_manager
@@ -116,10 +116,10 @@ class TestListBackgroundAgents:
         self, mock_agent_manager, mock_background_runner, mock_curriculum
     ):
         """Test listing all configured background agents."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -159,10 +159,10 @@ class TestListBackgroundAgents:
 
     def test_list_agents_empty_when_no_courses(self, mock_agent_manager):
         """Test listing agents when no courses loaded."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -195,10 +195,10 @@ class TestRunBackgroundAgent:
 
     def test_run_agent_success(self, mock_agent_manager, mock_background_runner, mock_curriculum):
         """Test running a background agent successfully."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -236,10 +236,10 @@ class TestRunBackgroundAgent:
         self, mock_agent_manager, mock_background_runner, mock_curriculum
     ):
         """Test running agent with specific users."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -272,10 +272,10 @@ class TestRunBackgroundAgent:
 
     def test_run_agent_not_found(self, mock_agent_manager, mock_background_runner):
         """Test running non-existent agent returns 404."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -308,10 +308,10 @@ class TestRunBackgroundAgent:
 
     def test_run_agent_runner_not_initialized(self, mock_agent_manager):
         """Test running agent when runner not initialized returns 503."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -338,10 +338,10 @@ class TestReloadConfig:
 
     def test_reload_config_success(self, mock_agent_manager, mock_background_runner):
         """Test reloading config successfully."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.main import app
-        from letta_starter.server.strategy import StrategyManager
-        from letta_starter.server.strategy.router import get_strategy_manager
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.main import app
+        from youlab_server.server.strategy import StrategyManager
+        from youlab_server.server.strategy.router import get_strategy_manager
 
         app.state.agent_manager = mock_agent_manager
 
@@ -381,8 +381,8 @@ class TestInitializeBackground:
 
     def test_initialize_creates_runner(self, tmp_path):
         """Test that initialize_background creates runner."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.background import initialize_background
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.background import initialize_background
 
         mock_letta = MagicMock()
         mock_honcho = MagicMock()
@@ -398,8 +398,8 @@ class TestInitializeBackground:
 
     def test_initialize_without_honcho(self, tmp_path):
         """Test initialization without Honcho client."""
-        from letta_starter.server import background as bg_module
-        from letta_starter.server.background import initialize_background
+        from youlab_server.server import background as bg_module
+        from youlab_server.server.background import initialize_background
 
         mock_letta = MagicMock()
 

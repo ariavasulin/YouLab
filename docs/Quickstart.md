@@ -111,7 +111,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ## Step 4: Start HTTP Service
 
 ```bash
-uv run letta-server
+uv run youlab-server
 ```
 
 The service starts on `http://localhost:8100`.
@@ -131,7 +131,7 @@ Open http://localhost:3000 in your browser.
 **First-time setup**:
 1. Create an admin account (first user becomes admin)
 2. Go to Admin Panel → Settings → Functions → Pipes
-3. Add the YouLab Pipe from `src/letta_starter/pipelines/letta_pipe.py`
+3. Add the YouLab Pipe from `src/youlab_server/pipelines/letta_pipe.py`
 4. Configure the Pipe valves:
    - `LETTA_SERVICE_URL`: `http://host.docker.internal:8100`
    - `AGENT_TYPE`: `tutor`
@@ -192,7 +192,7 @@ cd OpenWebUI/open-webui && docker compose up -d && cd ../..
 docker start letta  # if already created
 
 # HTTP service
-uv run letta-server
+uv run youlab-server
 ```
 
 ### Stop Everything
@@ -214,7 +214,7 @@ docker start open-webui ollama letta
 docker unpause open-webui ollama letta
 
 # Start HTTP service
-uv run letta-server
+uv run youlab-server
 ```
 
 ---
@@ -267,7 +267,7 @@ kill -9 <PID>
 curl http://localhost:8283/v1/health
 
 # Check service logs (run with debug)
-LOG_LEVEL=DEBUG uv run letta-server
+LOG_LEVEL=DEBUG uv run youlab-server
 ```
 
 ### Port 3000 conflict with docs server
