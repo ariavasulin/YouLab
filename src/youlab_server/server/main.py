@@ -170,7 +170,7 @@ async def create_agent(request: CreateAgentRequest) -> AgentResponse:
     manager = get_agent_manager()
 
     try:
-        agent_id = manager.create_agent(
+        agent_id = await manager.create_agent(
             user_id=request.user_id,
             agent_type=request.agent_type,
             user_name=request.user_name,

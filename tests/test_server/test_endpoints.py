@@ -44,7 +44,11 @@ class TestCreateAgentEndpoint:
 
     def test_create_agent_success(self, test_client, mock_agent_manager):
         """Test successful agent creation."""
-        mock_agent_manager.create_agent = lambda **_kw: "new-agent-id"
+
+        async def mock_create(**_kw):
+            return "new-agent-id"
+
+        mock_agent_manager.create_agent = mock_create
         mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "new-agent-id",
             "user_id": "user123",
@@ -62,7 +66,11 @@ class TestCreateAgentEndpoint:
 
     def test_create_agent_with_name(self, test_client, mock_agent_manager):
         """Test agent creation with user name."""
-        mock_agent_manager.create_agent = lambda **_kw: "new-agent-id"
+
+        async def mock_create(**_kw):
+            return "new-agent-id"
+
+        mock_agent_manager.create_agent = mock_create
         mock_agent_manager.get_agent_info = lambda _aid: {
             "agent_id": "new-agent-id",
             "user_id": "user123",
@@ -89,7 +97,7 @@ class TestCreateAgentEndpoint:
     def test_create_agent_invalid_type(self, test_client, mock_agent_manager):
         """Test agent creation fails with invalid type."""
 
-        def raise_value_error(**kw):
+        async def raise_value_error(**kw):
             raise ValueError("Unknown agent type: bad_type")
 
         mock_agent_manager.create_agent = raise_value_error
