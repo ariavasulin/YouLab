@@ -159,12 +159,51 @@ YOULAB_SERVICE_HOST=0.0.0.0
 
 ## Settings Classes
 
-See [[Settings]] for the Pydantic settings implementation.
+YouLab uses two Pydantic settings classes for type-safe configuration.
+
+**Location**: `src/letta_starter/config/settings.py`
+
+| Class | Prefix | Use Case |
+|-------|--------|----------|
+| `Settings` | (none) | CLI and library |
+| `ServiceSettings` | `YOULAB_SERVICE_` | HTTP service |
+
+### Settings Class
+
+General application settings, loaded from `.env`:
+
+```python
+from letta_starter.config import get_settings
+
+settings = get_settings()
+print(settings.letta_base_url)
+```
+
+### ServiceSettings Class
+
+HTTP service-specific settings with `YOULAB_SERVICE_` prefix:
+
+```python
+from letta_starter.config.settings import ServiceSettings
+
+settings = ServiceSettings()
+uvicorn.run(app, host=settings.host, port=settings.port)
+```
+
+### Testing with Settings
+
+```python
+from unittest.mock import patch
+
+def test_with_custom_settings():
+    with patch.object(settings, "langfuse_enabled", False):
+        result = get_langfuse()
+        assert result is None
+```
 
 ---
 
 ## Related Pages
 
-- [[Settings]] - Settings class details
 - [[Development]] - Local setup
 - [[Quickstart]] - Getting started

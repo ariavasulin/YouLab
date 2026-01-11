@@ -43,12 +43,16 @@ HTTP Service (FastAPI:8100)
 | Phase 6: Background Worker | **Complete** | Scheduled Honcho queries with memory enrichment |
 | Phase 7: Onboarding | Not Started | Student setup flow |
 
-## Quick Links
+## Start Here
 
-- [[Quickstart]] - Get up and running in 5 minutes
-- [[Architecture]] - System design and components
-- [[API]] - HTTP endpoint reference
-- [[Development]] - Contributing and local setup
+| I want to... | Read |
+|--------------|------|
+| Get running quickly | [[Quickstart]] |
+| Understand the system | [[Architecture]] |
+| Add/modify a course | [[config-schema]] |
+| Contribute code | [[Development]] |
+| Use the API | [[API]] |
+| Understand Letta | [[Letta-Integration]] |
 
 ## Tech Stack
 
