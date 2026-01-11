@@ -76,7 +76,7 @@ The bridge between OpenWebUI and the HTTP service:
 | Agent provisioning | `POST /agents` on first message |
 | Response streaming | SSE via `httpx-sse` |
 
-**Location**: `src/letta_starter/pipelines/letta_pipe.py`
+**Location**: `src/youlab_server/pipelines/letta_pipe.py`
 
 ### HTTP Service
 
@@ -90,7 +90,7 @@ FastAPI application providing RESTful endpoints:
 | Background | `/background/*` | BackgroundAgentRunner |
 | Health | `/health` | - |
 
-**Location**: `src/letta_starter/server/`
+**Location**: `src/youlab_server/server/`
 
 ### AgentManager
 
@@ -218,7 +218,7 @@ User types "Help me brainstorm essay topics"
 ## Project Structure
 
 ```
-src/letta_starter/
+src/youlab_server/
 ├── agents/              # Agent creation and management
 │   ├── base.py          # BaseAgent class (deprecated)
 │   ├── default.py       # Factory functions (deprecated)

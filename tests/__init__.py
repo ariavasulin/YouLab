@@ -1,1 +1,1 @@
-"""Tests for LettaStarter."""
+"""Tests for YouLab Server."""

@@ -37,13 +37,13 @@ class TestServerHonchoIntegration:
     ) -> None:
         """Test health endpoint includes Honcho connection status."""
         with (
-            patch("letta_starter.server.main.get_agent_manager") as mock_get_manager,
-            patch("letta_starter.server.main.get_honcho_client") as mock_get_honcho,
+            patch("youlab_server.server.main.get_agent_manager") as mock_get_manager,
+            patch("youlab_server.server.main.get_honcho_client") as mock_get_honcho,
         ):
             mock_get_manager.return_value = mock_agent_manager
             mock_get_honcho.return_value = mock_honcho_client
 
-            from letta_starter.server.main import app
+            from youlab_server.server.main import app
 
             client = TestClient(app)
 

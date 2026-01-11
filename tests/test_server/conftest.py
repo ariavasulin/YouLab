@@ -39,7 +39,7 @@ def mock_letta_client():
 @pytest.fixture
 def mock_agent_manager(mock_letta_client):
     """Mock AgentManager for endpoint testing."""
-    from letta_starter.server.agents import AgentManager
+    from youlab_server.server.agents import AgentManager
 
     manager = AgentManager.__new__(AgentManager)
     manager._client = mock_letta_client
@@ -51,9 +51,9 @@ def mock_agent_manager(mock_letta_client):
 @pytest.fixture
 def test_client(mock_agent_manager):
     """Test client with mocked dependencies."""
-    from letta_starter.server.main import app
-    from letta_starter.server.strategy import StrategyManager
-    from letta_starter.server.strategy.router import get_strategy_manager
+    from youlab_server.server.main import app
+    from youlab_server.server.strategy import StrategyManager
+    from youlab_server.server.strategy.router import get_strategy_manager
 
     # Set up agent manager
     app.state.agent_manager = mock_agent_manager

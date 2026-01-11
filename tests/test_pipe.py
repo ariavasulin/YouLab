@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from letta_starter.pipelines.letta_pipe import Pipe
+from youlab_server.pipelines.letta_pipe import Pipe
 
 
 class TestPipeInit:
@@ -274,7 +274,7 @@ class TestPipe:
 
             # Timeout on stream attempt
             with patch(
-                "letta_starter.pipelines.letta_pipe.aconnect_sse",
+                "youlab_server.pipelines.letta_pipe.aconnect_sse",
                 side_effect=httpx.TimeoutException("Timeout"),
             ):
                 result = await pipeline.pipe(
@@ -310,7 +310,7 @@ class TestPipe:
 
             # Connection error on stream attempt
             with patch(
-                "letta_starter.pipelines.letta_pipe.aconnect_sse",
+                "youlab_server.pipelines.letta_pipe.aconnect_sse",
                 side_effect=httpx.ConnectError("Connection refused"),
             ):
                 result = await pipeline.pipe(

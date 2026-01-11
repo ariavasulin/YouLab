@@ -40,7 +40,7 @@ The Pipeline (Pipe) connects OpenWebUI to the YouLab HTTP service.
 
 The Pipe class exposes configuration through Valves:
 
-**Location**: `src/letta_starter/pipelines/letta_pipe.py:21-39`
+**Location**: `src/youlab_server/pipelines/letta_pipe.py:21-39`
 
 ```python
 class Valves(BaseModel):
@@ -226,7 +226,7 @@ async def on_valves_updated(self):
 
 ### 1. Copy the Pipe File
 
-Copy `src/letta_starter/pipelines/letta_pipe.py` to OpenWebUI's functions directory.
+Copy `src/youlab_server/pipelines/letta_pipe.py` to OpenWebUI's functions directory.
 
 ### 2. Register in OpenWebUI
 

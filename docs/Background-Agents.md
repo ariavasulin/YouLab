@@ -133,12 +133,12 @@ merge_strategy = "append"
 
 ### BackgroundAgentRunner
 
-**Location**: `src/letta_starter/background/runner.py`
+**Location**: `src/youlab_server/background/runner.py`
 
 Executes background agents based on configuration.
 
 ```python
-from letta_starter.background.runner import BackgroundAgentRunner
+from youlab_server.background.runner import BackgroundAgentRunner
 
 runner = BackgroundAgentRunner(
     letta_client=letta,
@@ -170,12 +170,12 @@ print(f"Applied {result.enrichments_applied} enrichments")
 
 ### MemoryEnricher
 
-**Location**: `src/letta_starter/memory/enricher.py`
+**Location**: `src/youlab_server/memory/enricher.py`
 
 Handles external memory updates with audit trailing.
 
 ```python
-from letta_starter.memory.enricher import MemoryEnricher, MergeStrategy
+from youlab_server.memory.enricher import MemoryEnricher, MergeStrategy
 
 enricher = MemoryEnricher(letta_client)
 

@@ -6,8 +6,8 @@ Pydantic models for API requests and responses.
 
 ## Location
 
-- Main schemas: `src/letta_starter/server/schemas.py`
-- Strategy schemas: `src/letta_starter/server/strategy/schemas.py`
+- Main schemas: `src/youlab_server/server/schemas.py`
+- Strategy schemas: `src/youlab_server/server/strategy/schemas.py`
 
 ---
 
