@@ -3,13 +3,13 @@
 import pytest
 from pydantic import ValidationError
 
-from letta_starter.agents.templates import (
+from youlab_server.agents.templates import (
     TUTOR_TEMPLATE,
     AgentTemplate,
     AgentTemplateRegistry,
     templates,
 )
-from letta_starter.memory.blocks import HumanBlock, PersonaBlock
+from youlab_server.memory.blocks import HumanBlock, PersonaBlock
 
 
 class TestAgentTemplate:

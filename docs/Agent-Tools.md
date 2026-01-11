@@ -10,8 +10,8 @@ YouLab provides two agent tools:
 
 | Tool | Purpose | Location |
 |------|---------|----------|
-| `query_honcho` | Query Honcho for student insights | `src/letta_starter/tools/dialectic.py` |
-| `edit_memory_block` | Update memory blocks | `src/letta_starter/tools/memory.py` |
+| `query_honcho` | Query Honcho for student insights | `src/youlab_server/tools/dialectic.py` |
+| `edit_memory_block` | Update memory blocks | `src/youlab_server/tools/memory.py` |
 
 These tools enable agents to:
 - Access theory-of-mind insights mid-conversation
@@ -23,7 +23,7 @@ These tools enable agents to:
 
 Query Honcho dialectic for insights about the current student.
 
-**Location**: `src/letta_starter/tools/dialectic.py`
+**Location**: `src/youlab_server/tools/dialectic.py`
 
 ### Usage
 
@@ -73,8 +73,8 @@ Example: query_honcho("How engaged is this student with the current topic?")
 The tools require client context to be set before use:
 
 ```python
-from letta_starter.tools.dialectic import set_honcho_client, set_user_context
-from letta_starter.tools.memory import set_letta_client
+from youlab_server.tools.dialectic import set_honcho_client, set_user_context
+from youlab_server.tools.memory import set_letta_client
 
 # During service initialization
 set_honcho_client(honcho_client)
@@ -90,7 +90,7 @@ set_user_context(agent_id="agent-abc", user_id="user123")
 
 Update a field in the agent's memory blocks.
 
-**Location**: `src/letta_starter/tools/memory.py`
+**Location**: `src/youlab_server/tools/memory.py`
 
 ### Usage
 
@@ -171,8 +171,8 @@ IMPORTANT: Only store factual, relevant information. Don't overwrite existing co
 Tools are registered with Letta agents during creation:
 
 ```python
-from letta_starter.tools.dialectic import query_honcho
-from letta_starter.tools.memory import edit_memory_block
+from youlab_server.tools.dialectic import query_honcho
+from youlab_server.tools.memory import edit_memory_block
 
 # Tools are added to agent via Letta SDK
 agent = client.create_agent(

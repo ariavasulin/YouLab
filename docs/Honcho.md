@@ -61,12 +61,12 @@ Workspace: "youlab"
 
 ## HonchoClient
 
-**Location**: `src/letta_starter/honcho/client.py`
+**Location**: `src/youlab_server/honcho/client.py`
 
 ### Initialization
 
 ```python
-from letta_starter.honcho import HonchoClient
+from youlab_server.honcho import HonchoClient
 
 client = HonchoClient(
     workspace_id="youlab",
@@ -134,7 +134,7 @@ if client.check_connection():
 Query Honcho for insights about a student (theory-of-mind):
 
 ```python
-from letta_starter.honcho.client import SessionScope
+from youlab_server.honcho.client import SessionScope
 
 response = await client.query_dialectic(
     user_id="user123",
@@ -178,12 +178,12 @@ class DialecticResponse:
 
 ## Fire-and-Forget Pattern
 
-**Location**: `src/letta_starter/honcho/client.py:310-363`
+**Location**: `src/youlab_server/honcho/client.py:310-363`
 
 Messages are persisted asynchronously without blocking the chat response:
 
 ```python
-from letta_starter.honcho.client import create_persist_task
+from youlab_server.honcho.client import create_persist_task
 
 # In chat endpoint - doesn't block response
 create_persist_task(
@@ -208,7 +208,7 @@ create_persist_task(
 
 ## HTTP Service Integration
 
-**Location**: `src/letta_starter/server/main.py`
+**Location**: `src/youlab_server/server/main.py`
 
 ### Initialization
 

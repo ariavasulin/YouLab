@@ -169,7 +169,7 @@ field.policies = { type = "list", default = [], max = 50 }
 field.resources = { type = "list", default = [], max = 100 }
 ```
 
-**Implementation:** See `AgentManager._get_or_create_shared_block()` in `src/letta_starter/server/agents.py:53-112`
+**Implementation:** See `AgentManager._get_or_create_shared_block()` in `src/youlab_server/server/agents.py:53-112`
 
 ---
 

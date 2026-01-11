@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from letta_starter.server.tracing import (
+from youlab_server.server.tracing import (
     get_langfuse,
     trace_chat,
     trace_generation,
@@ -14,13 +14,13 @@ class TestGetLangfuse:
 
     def test_disabled_returns_none(self):
         """Test None returned when Langfuse disabled."""
-        with patch("letta_starter.server.tracing.settings") as mock_settings:
+        with patch("youlab_server.server.tracing.settings") as mock_settings:
             mock_settings.langfuse_enabled = False
             mock_settings.langfuse_public_key = "pk_test"
             mock_settings.langfuse_secret_key = "sk_test"  # noqa: S105
 
             # Reset singleton
-            import letta_starter.server.tracing as tracing_module
+            import youlab_server.server.tracing as tracing_module
 
             tracing_module._langfuse = None
 
@@ -30,13 +30,13 @@ class TestGetLangfuse:
 
     def test_missing_keys_returns_none(self):
         """Test None returned when keys missing."""
-        with patch("letta_starter.server.tracing.settings") as mock_settings:
+        with patch("youlab_server.server.tracing.settings") as mock_settings:
             mock_settings.langfuse_enabled = True
             mock_settings.langfuse_public_key = None
             mock_settings.langfuse_secret_key = None
 
             # Reset singleton
-            import letta_starter.server.tracing as tracing_module
+            import youlab_server.server.tracing as tracing_module
 
             tracing_module._langfuse = None
 
@@ -47,8 +47,8 @@ class TestGetLangfuse:
     def test_creates_client_with_keys(self):
         """Test Langfuse client created with valid keys."""
         with (
-            patch("letta_starter.server.tracing.settings") as mock_settings,
-            patch("letta_starter.server.tracing.Langfuse") as mock_langfuse,
+            patch("youlab_server.server.tracing.settings") as mock_settings,
+            patch("youlab_server.server.tracing.Langfuse") as mock_langfuse,
         ):
             mock_settings.langfuse_enabled = True
             mock_settings.langfuse_public_key = "pk_test"
@@ -56,7 +56,7 @@ class TestGetLangfuse:
             mock_settings.langfuse_host = "https://cloud.langfuse.com"
 
             # Reset singleton
-            import letta_starter.server.tracing as tracing_module
+            import youlab_server.server.tracing as tracing_module
 
             tracing_module._langfuse = None
 
@@ -75,7 +75,7 @@ class TestTraceChatContext:
     def test_returns_trace_id(self):
         """Test context includes trace_id."""
         with (
-            patch("letta_starter.server.tracing.get_langfuse", return_value=None),
+            patch("youlab_server.server.tracing.get_langfuse", return_value=None),
             trace_chat(
                 user_id="user123",
                 agent_id="agent-123",
@@ -91,7 +91,7 @@ class TestTraceChatContext:
         mock_langfuse.trace.return_value = mock_trace
 
         with (
-            patch("letta_starter.server.tracing.get_langfuse", return_value=mock_langfuse),
+            patch("youlab_server.server.tracing.get_langfuse", return_value=mock_langfuse),
             trace_chat(
                 user_id="user123",
                 agent_id="agent-123",
@@ -106,7 +106,7 @@ class TestTraceChatContext:
     def test_graceful_without_langfuse(self):
         """Test works without Langfuse."""
         with (
-            patch("letta_starter.server.tracing.get_langfuse", return_value=None),
+            patch("youlab_server.server.tracing.get_langfuse", return_value=None),
             trace_chat(
                 user_id="user123",
                 agent_id="agent-123",
@@ -122,7 +122,7 @@ class TestTraceChatContext:
 
         # Should not raise
         with (
-            patch("letta_starter.server.tracing.get_langfuse", return_value=mock_langfuse),
+            patch("youlab_server.server.tracing.get_langfuse", return_value=mock_langfuse),
             trace_chat(
                 user_id="user123",
                 agent_id="agent-123",

@@ -4,15 +4,15 @@ from datetime import datetime
 
 import pytest
 
-from letta_starter.background.runner import BackgroundAgentRunner, RunResult
-from letta_starter.curriculum.schema import (
+from youlab_server.background.runner import BackgroundAgentRunner, RunResult
+from youlab_server.curriculum.schema import (
     BackgroundAgentConfig,
     DialecticQuery,
     MergeStrategy,
     SessionScope,
     Triggers,
 )
-from letta_starter.honcho.client import DialecticResponse
+from youlab_server.honcho.client import DialecticResponse
 
 
 class MockAgent:

@@ -1,4 +1,4 @@
-# LettaStarter
+# YouLab Server
 
 Context-engineered Letta agents with comprehensive observability, exposed via Open WebUI.
 
@@ -32,7 +32,7 @@ Context-engineered Letta agents with comprehensive observability, exposed via Op
 
 ```bash
 # Clone the repository
-cd LettaStarter
+cd YouLab
 
 # Development setup (recommended) - installs all deps + pre-commit hooks
 make setup
@@ -62,20 +62,20 @@ cp .env.example .env
 
 ```bash
 # Run interactive session
-uv run letta-starter
+uv run youlab
 
 # Or with specific agent
-uv run letta-starter --agent my-agent
+uv run youlab --agent my-agent
 
 # With debug logging
-uv run letta-starter --log-level DEBUG
+uv run youlab --log-level DEBUG
 ```
 
 #### Python API
 
 ```python
 from letta import create_client
-from letta_starter import (
+from youlab_server import (
     configure_logging,
     get_tracer,
     create_default_agent,
@@ -112,7 +112,7 @@ tracer.end_session()
 #### Custom Agent
 
 ```python
-from letta_starter import BaseAgent, PersonaBlock, HumanBlock
+from youlab_server import BaseAgent, PersonaBlock, HumanBlock
 
 # Define custom persona
 persona = PersonaBlock(
@@ -136,7 +136,7 @@ agent = BaseAgent(
 ## Project Structure
 
 ```
-src/letta_starter/
+src/youlab_server/
 ├── agents/           # Agent definitions
 │   ├── base.py       # BaseAgent with observability
 │   ├── default.py    # Pre-configured agents
@@ -185,7 +185,7 @@ persona = PersonaBlock(
 ### Context Rotation Strategies
 
 ```python
-from letta_starter.memory.strategies import (
+from youlab_server.memory.strategies import (
     AggressiveRotation,    # Rotate at 70% capacity
     PreservativeRotation,  # Rotate at 90% capacity
     AdaptiveRotation,      # Learn optimal threshold
@@ -203,7 +203,7 @@ manager = MemoryManager(
 
 ### Option 1: Copy Pipeline
 
-Copy `src/letta_starter/pipelines/letta_pipe.py` to Open WebUI's pipelines directory.
+Copy `src/youlab_server/pipelines/letta_pipe.py` to Open WebUI's pipelines directory.
 
 ### Option 2: Upload via Admin
 
@@ -218,7 +218,7 @@ Copy `src/letta_starter/pipelines/letta_pipe.py` to Open WebUI's pipelines direc
 ### Logging
 
 ```python
-from letta_starter import configure_logging, get_logger
+from youlab_server import configure_logging, get_logger
 
 # Production (JSON logs)
 configure_logging(level="INFO", json_output=True)
@@ -233,7 +233,7 @@ logger.info("event_name", key="value", number=42)
 ### Metrics
 
 ```python
-from letta_starter.observability.metrics import get_metrics_collector
+from youlab_server.observability.metrics import get_metrics_collector
 
 collector = get_metrics_collector()
 collector.start_session("session-001")
@@ -275,7 +275,7 @@ make check-agent
 make lint-fix
 
 # Run HTTP server
-uv run letta-server
+uv run youlab-server
 ```
 
 The `-agent` variants use the "swallow success, show failure" pattern for cleaner output.

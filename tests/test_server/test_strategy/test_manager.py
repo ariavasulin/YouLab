@@ -8,7 +8,7 @@ class TestStrategyManagerSingleton:
 
     def test_ensure_agent_creates_new(self, mock_letta_client):
         """Test ensure_agent creates agent when none exists."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -23,7 +23,7 @@ class TestStrategyManagerSingleton:
 
     def test_ensure_agent_returns_existing(self, mock_letta_client):
         """Test ensure_agent returns existing agent when one exists."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_agent = MagicMock()
         mock_agent.name = "YouLab-Support"
@@ -40,7 +40,7 @@ class TestStrategyManagerSingleton:
 
     def test_ensure_agent_caches_result(self, mock_letta_client):
         """Test ensure_agent caches the agent_id."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -63,7 +63,7 @@ class TestStrategyManagerDocuments:
 
     def test_upload_document_success(self, mock_letta_client):
         """Test successful document upload."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -80,7 +80,7 @@ class TestStrategyManagerDocuments:
 
     def test_upload_document_with_tags(self, mock_letta_client):
         """Test document upload includes tags in content."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -97,7 +97,7 @@ class TestStrategyManagerDocuments:
 
     def test_upload_document_empty_tags(self, mock_letta_client):
         """Test document upload with no tags."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -115,7 +115,7 @@ class TestStrategyManagerAsk:
 
     def test_ask_success(self, mock_letta_client):
         """Test successful question asking."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -135,7 +135,7 @@ class TestStrategyManagerAsk:
 
     def test_ask_empty_response(self, mock_letta_client):
         """Test handling empty response."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -152,7 +152,7 @@ class TestStrategyManagerAsk:
 
     def test_ask_uses_correct_agent(self, mock_letta_client):
         """Test ask sends message to strategy agent."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_agent = MagicMock()
         mock_agent.name = "YouLab-Support"
@@ -176,7 +176,7 @@ class TestStrategyManagerSearch:
 
     def test_search_documents_success(self, mock_letta_client):
         """Test successful document search."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -195,7 +195,7 @@ class TestStrategyManagerSearch:
 
     def test_search_documents_empty_results(self, mock_letta_client):
         """Test search with no results."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
         mock_letta_client.create_agent.return_value = MagicMock(id="strategy-agent-id")
@@ -214,7 +214,7 @@ class TestStrategyManagerHealthCheck:
 
     def test_check_agent_exists_true(self, mock_letta_client):
         """Test check returns true when agent exists."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_agent = MagicMock()
         mock_agent.name = "YouLab-Support"
@@ -228,7 +228,7 @@ class TestStrategyManagerHealthCheck:
 
     def test_check_agent_exists_false(self, mock_letta_client):
         """Test check returns false when agent doesn't exist."""
-        from letta_starter.server.strategy import StrategyManager
+        from youlab_server.server.strategy import StrategyManager
 
         mock_letta_client.list_agents.return_value = []
 
