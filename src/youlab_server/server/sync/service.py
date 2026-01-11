@@ -13,6 +13,7 @@ from letta_client import Letta
 
 from youlab_server.server.sync.mappings import (
     FileMapping,
+    FolderMapping,
     NoteMapping,
     SyncMappingStore,
 )
@@ -295,6 +296,8 @@ class FileSyncService:
         """
         Get or create Letta folder by name.
 
+        ALSO creates corresponding OpenWebUI Knowledge collection.
+
         Args:
             name: Folder name.
 
@@ -303,7 +306,10 @@ class FileSyncService:
 
         """
         if name in self._folder_cache:
-            return self._folder_cache[name]
+            folder_id = self._folder_cache[name]
+            # Ensure OpenWebUI Knowledge exists (idempotent)
+            await self.ensure_knowledge_for_folder(name, folder_id)
+            return folder_id
 
         # Search for existing folder
         folders = self.letta.folders.list(name=name)
@@ -312,6 +318,8 @@ class FileSyncService:
                 if folder.id is None:
                     raise RuntimeError(f"Letta returned folder without ID: {name}")
                 self._folder_cache[name] = folder.id
+                # Ensure OpenWebUI Knowledge exists
+                await self.ensure_knowledge_for_folder(name, folder.id)
                 return folder.id
 
         # Create new folder
@@ -322,22 +330,133 @@ class FileSyncService:
         if folder.id is None:
             raise RuntimeError(f"Letta returned new folder without ID: {name}")
         self._folder_cache[name] = folder.id
-        logger.info("Created folder: %s", name)
+
+        # Create corresponding OpenWebUI Knowledge
+        await self.ensure_knowledge_for_folder(name, folder.id)
+
+        logger.info("Created folder with OpenWebUI mirror: %s", name)
         return folder.id
+
+    async def ensure_knowledge_for_folder(self, folder_name: str, folder_id: str) -> str:
+        """
+        Ensure OpenWebUI Knowledge collection exists for Letta folder.
+
+        Creates if not exists, returns Knowledge ID.
+
+        Args:
+            folder_name: Name of the Letta folder.
+            folder_id: ID of the Letta folder.
+
+        Returns:
+            OpenWebUI Knowledge collection ID.
+
+        """
+        # Check mapping first
+        mapping = self.mappings.get_folder_mapping(folder_id)
+        if mapping and mapping.status == "synced":
+            return mapping.openwebui_knowledge_id
+
+        # Check if Knowledge exists by name
+        collections = await self.openwebui.list_knowledge()
+        for coll in collections:
+            if coll.name == folder_name:
+                # Found existing - create mapping
+                self.mappings.set_folder_mapping(
+                    FolderMapping(
+                        letta_folder_id=folder_id,
+                        letta_folder_name=folder_name,
+                        openwebui_knowledge_id=coll.id,
+                        last_synced=datetime.now().isoformat(),
+                        status="synced",
+                    )
+                )
+                return coll.id
+
+        # Create new Knowledge collection
+        knowledge_id = await self.openwebui.create_knowledge(
+            name=folder_name,
+            description=f"Synced from Letta folder: {folder_name}",
+        )
+
+        self.mappings.set_folder_mapping(
+            FolderMapping(
+                letta_folder_id=folder_id,
+                letta_folder_name=folder_name,
+                openwebui_knowledge_id=knowledge_id,
+                last_synced=datetime.now().isoformat(),
+                status="synced",
+            )
+        )
+
+        logger.info("Created OpenWebUI Knowledge for folder: %s", folder_name)
+        return knowledge_id
+
+    async def sync_file_to_openwebui(
+        self,
+        folder_id: str,
+        folder_name: str,
+        letta_file_id: str,
+        filename: str,
+        content: bytes,
+    ) -> str:
+        """
+        Sync a Letta file to OpenWebUI Knowledge.
+
+        Args:
+            folder_id: Letta folder ID.
+            folder_name: Name of the folder.
+            letta_file_id: Letta file ID.
+            filename: Name of the file.
+            content: File content bytes.
+
+        Returns:
+            OpenWebUI file ID.
+
+        """
+        # Ensure Knowledge collection exists
+        knowledge_id = await self.ensure_knowledge_for_folder(folder_name, folder_id)
+
+        # Upload file to OpenWebUI
+        openwebui_file_id = await self.openwebui.upload_file(filename, content)
+
+        # Add to Knowledge collection
+        await self.openwebui.add_file_to_knowledge(knowledge_id, openwebui_file_id)
+
+        logger.info("Synced file to OpenWebUI: %s → %s", filename, folder_name)
+        return openwebui_file_id
+
+    def _get_folder_name_by_id(self, folder_id: str) -> str | None:
+        """
+        Lookup folder name from ID using cache.
+
+        Args:
+            folder_id: Letta folder ID.
+
+        Returns:
+            Folder name or None if not found.
+
+        """
+        for name, fid in self._folder_cache.items():
+            if fid == folder_id:
+                return name
+        return None
 
     async def _upload_file(
         self,
         folder_id: str,
         filename: str,
         content: bytes,
+        *,
+        reverse_sync: bool = False,
     ) -> str:
         """
-        Upload file to Letta folder and wait for processing.
+        Upload file to Letta folder.
 
         Args:
             folder_id: Letta folder ID.
             filename: File name.
             content: File content bytes.
+            reverse_sync: If True, also upload to OpenWebUI (for Letta-originated files).
 
         Returns:
             Letta file ID.
@@ -346,33 +465,56 @@ class FileSyncService:
         file_obj = io.BytesIO(content)
         file_obj.name = filename
 
-        # Upload returns a job for async processing
-        job = self.letta.folders.files.upload(
+        # Upload file to Letta folder
+        result = self.letta.folders.files.upload(
             folder_id=folder_id,
             file=file_obj,
         )
-        if job.id is None:
-            raise RuntimeError("Letta returned upload job without ID")
 
-        # Wait for processing to complete
-        job_id = job.id  # Capture the ID for type narrowing
-        while True:
-            job = self.letta.jobs.retrieve(job_id)
-            if job.status == "completed":
-                break
-            if job.status == "failed":
-                raise RuntimeError(f"File upload failed: {job.error}")
-            await asyncio.sleep(0.5)
+        # Handle both old (job-based) and new (direct file) API responses
+        if hasattr(result, "id") and result.id:
+            result_id = result.id
+            # Check if it's a job ID (starts with "job-") or file ID (starts with "file-")
+            if result_id.startswith("job-"):
+                # Old API: wait for job completion
+                while True:
+                    job = self.letta.jobs.retrieve(result_id)
+                    if job.status == "completed":
+                        break
+                    if job.status == "failed":
+                        raise RuntimeError(f"File upload failed: {job.error}")
+                    await asyncio.sleep(0.5)
 
-        # Find the uploaded file to get its ID
-        files = self.letta.folders.files.list(folder_id=folder_id)
-        for f in files:
-            if filename in (f.file_name, f.original_file_name):
-                if f.id is None:
-                    raise RuntimeError(f"Letta returned file without ID: {filename}")
-                return f.id
+                # Find the uploaded file to get its ID
+                files = self.letta.folders.files.list(folder_id=folder_id)
+                letta_file_id: str | None = None
+                for f in files:
+                    if filename in (f.file_name, f.original_file_name):
+                        if f.id is None:
+                            raise RuntimeError(f"Letta returned file without ID: {filename}")
+                        letta_file_id = f.id
+                        break
+                if not letta_file_id:
+                    raise RuntimeError(f"File {filename} not found after upload")
+            else:
+                # New API: result is the file directly
+                letta_file_id = result_id
+        else:
+            raise RuntimeError("Letta returned upload result without ID")
 
-        raise RuntimeError(f"File {filename} not found after upload")
+        # REVERSE SYNC: Only for files originating from Letta (not synced from OpenWebUI)
+        if reverse_sync:
+            folder_name = self._get_folder_name_by_id(folder_id)
+            if folder_name:
+                await self.sync_file_to_openwebui(
+                    folder_id=folder_id,
+                    folder_name=folder_name,
+                    letta_file_id=letta_file_id,
+                    filename=filename,
+                    content=content,
+                )
+
+        return letta_file_id
 
     def get_status(self) -> dict[str, Any]:
         """
@@ -400,3 +542,58 @@ class FileSyncService:
                 else None
             ),
         }
+
+    async def sync_knowledge_by_id(self, knowledge_id: str) -> None:
+        """
+        Sync a specific knowledge collection immediately.
+
+        Args:
+            knowledge_id: OpenWebUI Knowledge collection ID.
+
+        """
+        collections = await self.openwebui.list_knowledge()
+        for coll in collections:
+            if coll.id == knowledge_id:
+                folder_name = self._get_folder_name_for_knowledge(coll)
+                folder_id = await self.ensure_folder(folder_name)
+
+                for file in coll.files:
+                    await self._sync_single_file(file, coll, folder_id, SyncStats())
+                return
+
+    async def sync_file_by_id(self, file_id: str, knowledge_id: str) -> None:
+        """
+        Sync a specific file immediately.
+
+        Args:
+            file_id: OpenWebUI file ID.
+            knowledge_id: OpenWebUI Knowledge collection ID.
+
+        """
+        collections = await self.openwebui.list_knowledge()
+        for coll in collections:
+            if coll.id == knowledge_id:
+                folder_name = self._get_folder_name_for_knowledge(coll)
+                folder_id = await self.ensure_folder(folder_name)
+
+                for file in coll.files:
+                    if file.id == file_id:
+                        await self._sync_single_file(file, coll, folder_id, SyncStats())
+                        return
+
+    async def check_and_sync_file(self, file_id: str) -> None:
+        """
+        Check if a file belongs to a tracked knowledge collection and sync it.
+
+        Args:
+            file_id: OpenWebUI file ID.
+
+        """
+        collections = await self.openwebui.list_knowledge()
+        for coll in collections:
+            for file in coll.files:
+                if file.id == file_id:
+                    folder_name = self._get_folder_name_for_knowledge(coll)
+                    folder_id = await self.ensure_folder(folder_name)
+                    await self._sync_single_file(file, coll, folder_id, SyncStats())
+                    return

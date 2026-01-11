@@ -15,6 +15,7 @@ import structlog
 
 from youlab_server.curriculum.schema import (
     AgentConfig,
+    AgentFoldersConfig,
     BackgroundAgentConfig,
     BlockSchema,
     CourseConfig,
@@ -203,6 +204,10 @@ class CurriculumLoader:
             # v1: [[agent.tools]] array of objects
             tools = self._parse_tools_v1(tools_data)
 
+        # Parse folders config if present
+        folders_data = data.get("folders", {})
+        folders = AgentFoldersConfig(**folders_data) if folders_data else AgentFoldersConfig()
+
         return AgentConfig(
             id=data.get("id", ""),
             name=data.get("name", ""),
@@ -215,6 +220,7 @@ class CurriculumLoader:
             max_response_tokens=data.get("max_response_tokens", 4096),
             system=data.get("system", ""),
             tools=tools,
+            folders=folders,
         )
 
     def _parse_tools_v1(self, tools_data: list[dict[str, Any]]) -> list[ToolConfig]:

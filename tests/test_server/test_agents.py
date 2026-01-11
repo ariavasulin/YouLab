@@ -80,8 +80,9 @@ class TestAgentManagerCache:
 class TestAgentManagerCreate:
     """Tests for agent creation."""
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_create_agent_new(self, mock_curriculum, mock_letta_client):
+    async def test_create_agent_new(self, mock_curriculum, mock_letta_client):
         """Test creating a new agent uses curriculum path."""
         mock_letta_client.agents.list.return_value = []
         mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
@@ -92,6 +93,7 @@ class TestAgentManagerCreate:
         mock_course.agent.embedding = "openai/text-embedding-3-small"
         mock_course.agent.system = "You are helpful."
         mock_course.agent.tools = []
+        mock_course.agent.folders = None
         mock_course.blocks = {}
         mock_course.version = "1.0.0"
         mock_curriculum.get.return_value = mock_course
@@ -100,14 +102,15 @@ class TestAgentManagerCreate:
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
 
-        result = manager.create_agent("user123", "tutor", "Alice")
+        result = await manager.create_agent("user123", "tutor", "Alice")
 
         assert result == "new-agent-id"
         mock_curriculum.get.assert_called_with("default")
         mock_letta_client.agents.create.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_create_agent_already_exists(self, mock_curriculum, mock_letta_client):
+    async def test_create_agent_already_exists(self, mock_curriculum, mock_letta_client):
         """Test creating agent when one already exists."""
         mock_agent = MagicMock()
         # Note: cache key uses course_id ("default") as agent_type
@@ -118,13 +121,14 @@ class TestAgentManagerCreate:
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
 
-        result = manager.create_agent("user123", "tutor")
+        result = await manager.create_agent("user123", "tutor")
 
         assert result == "existing-agent-id"
         mock_letta_client.agents.create.assert_not_called()
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_create_agent_unknown_type(self, mock_curriculum, mock_letta_client):
+    async def test_create_agent_unknown_type(self, mock_curriculum, mock_letta_client):
         """Test creating agent with unknown type raises error."""
         mock_letta_client.agents.list.return_value = []
         mock_curriculum.get.return_value = None
@@ -133,10 +137,11 @@ class TestAgentManagerCreate:
         manager._client = mock_letta_client
 
         with pytest.raises(ValueError, match="Unknown course"):
-            manager.create_agent("user123", "nonexistent_type")
+            await manager.create_agent("user123", "nonexistent_type")
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_create_agent_with_user_name(self, mock_curriculum, mock_letta_client):
+    async def test_create_agent_with_user_name(self, mock_curriculum, mock_letta_client):
         """Test agent creation includes user name in human block."""
         mock_letta_client.agents.list.return_value = []
         mock_letta_client.agents.create.return_value = MagicMock(id="new-agent-id")
@@ -147,6 +152,7 @@ class TestAgentManagerCreate:
         mock_course.agent.embedding = "openai/text-embedding-3-small"
         mock_course.agent.system = "You are helpful."
         mock_course.agent.tools = []
+        mock_course.agent.folders = None
         mock_course.version = "1.0.0"
 
         # Create a proper block schema with label "human"
@@ -169,7 +175,7 @@ class TestAgentManagerCreate:
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
 
-        manager.create_agent("user123", "tutor", "Alice")
+        await manager.create_agent("user123", "tutor", "Alice")
 
         # Verify agents.create was called with memory_blocks containing user name
         call_kwargs = mock_letta_client.agents.create.call_args[1]
@@ -182,8 +188,9 @@ class TestAgentManagerCreate:
 class TestAgentManagerSharedBlocks:
     """Tests for shared block functionality."""
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_shared_block_created_and_reused(self, mock_curriculum, mock_letta_client):
+    async def test_shared_block_created_and_reused(self, mock_curriculum, mock_letta_client):
         """Test that shared blocks are created once and reused across agents."""
         mock_letta_client.agents.list.return_value = []
         mock_letta_client.blocks.list.return_value = []  # No existing blocks
@@ -196,6 +203,7 @@ class TestAgentManagerSharedBlocks:
         mock_course.agent.embedding = "openai/text-embedding-3-small"
         mock_course.agent.system = "You are helpful."
         mock_course.agent.tools = []
+        mock_course.agent.folders = None
         mock_course.version = "1.0.0"
 
         # Create shared team block and regular human block
@@ -225,7 +233,7 @@ class TestAgentManagerSharedBlocks:
         manager._client = mock_letta_client
 
         # Create first agent
-        manager.create_agent_from_curriculum("user1", "test-course")
+        await manager.create_agent_from_curriculum("user1", "test-course")
 
         # Verify shared block was created
         mock_letta_client.blocks.create.assert_called_once()
@@ -243,7 +251,7 @@ class TestAgentManagerSharedBlocks:
         mock_letta_client.agents.create.return_value = MagicMock(id="agent-2-id")
 
         # Create second agent - should reuse existing shared block
-        manager.create_agent_from_curriculum("user2", "test-course")
+        await manager.create_agent_from_curriculum("user2", "test-course")
 
         # Shared block should NOT be created again
         mock_letta_client.blocks.create.assert_not_called()
@@ -252,8 +260,9 @@ class TestAgentManagerSharedBlocks:
         agent_create_call = mock_letta_client.agents.create.call_args.kwargs
         assert agent_create_call["block_ids"] == ["shared-block-id"]
 
+    @pytest.mark.asyncio
     @patch("youlab_server.server.agents.curriculum")
-    def test_shared_block_found_in_letta(self, mock_curriculum, mock_letta_client):
+    async def test_shared_block_found_in_letta(self, mock_curriculum, mock_letta_client):
         """Test that existing shared blocks in Letta are discovered."""
         mock_letta_client.agents.list.return_value = []
 
@@ -271,6 +280,7 @@ class TestAgentManagerSharedBlocks:
         mock_course.agent.embedding = "openai/text-embedding-3-small"
         mock_course.agent.system = ""
         mock_course.agent.tools = []
+        mock_course.agent.folders = None
         mock_course.version = "1.0.0"
 
         mock_team_schema = MagicMock()
@@ -293,7 +303,7 @@ class TestAgentManagerSharedBlocks:
         manager = AgentManager("http://localhost:8283")
         manager._client = mock_letta_client
 
-        manager.create_agent_from_curriculum("user1", "test-course")
+        await manager.create_agent_from_curriculum("user1", "test-course")
 
         # Should NOT create a new block since one already exists
         mock_letta_client.blocks.create.assert_not_called()

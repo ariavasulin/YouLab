@@ -1,11 +1,14 @@
 """HTTP endpoints for file sync management."""
 
+import logging
 from dataclasses import asdict
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from youlab_server.server.sync.service import FileSyncService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
@@ -26,6 +29,17 @@ def get_file_sync() -> FileSyncService:
             status_code=503,
             detail="Sync service not initialized or disabled",
         )
+    return _sync_service
+
+
+def get_file_sync_optional() -> FileSyncService | None:
+    """
+    Get the file sync service if available.
+
+    Returns:
+        The file sync service, or None if not initialized.
+
+    """
     return _sync_service
 
 
@@ -130,3 +144,43 @@ async def attach_folder_to_agent(
         folder_id=folder_id,
     )
     return {"status": "attached", "folder_id": folder_id}
+
+
+@router.post("/webhook")
+async def handle_openwebui_webhook(
+    request: Request,
+    sync: SyncDep,
+) -> dict[str, str]:
+    """
+    Receive OpenWebUI webhook events for immediate sync.
+
+    Configure in OpenWebUI Admin → Settings → Webhooks:
+    URL: http://youlab-server:8100/sync/webhook
+    Events: knowledge.*, file.*
+
+    """
+    payload = await request.json()
+    event_type = payload.get("event")
+
+    logger.info("Received webhook: %s", event_type)
+
+    if event_type in ("knowledge.created", "knowledge.updated"):
+        # Sync knowledge collection to Letta
+        knowledge_id = payload.get("data", {}).get("id")
+        if knowledge_id:
+            await sync.sync_knowledge_by_id(knowledge_id)
+
+    elif event_type == "knowledge.file.added":
+        # Sync new file to Letta
+        file_id = payload.get("data", {}).get("file_id")
+        knowledge_id = payload.get("data", {}).get("knowledge_id")
+        if file_id and knowledge_id:
+            await sync.sync_file_by_id(file_id, knowledge_id)
+
+    elif event_type == "file.uploaded":
+        # Check if file is in a knowledge collection we're tracking
+        file_id = payload.get("data", {}).get("id")
+        if file_id:
+            await sync.check_and_sync_file(file_id)
+
+    return {"status": "ok"}
