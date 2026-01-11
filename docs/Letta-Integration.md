@@ -26,7 +26,7 @@ from letta_client import Letta
 client = Letta(base_url="http://localhost:8283")
 
 # From settings
-from letta_starter.config import get_settings
+from youlab_server.config import get_settings
 settings = get_settings()
 client = Letta(base_url=str(settings.letta_base_url))
 ```
