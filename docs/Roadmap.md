@@ -1,216 +1,19 @@
 # Roadmap
 
-[[README|← Back to Overview]]
+[[README|<- Back to Overview]]
 
 Implementation roadmap for YouLab's AI tutoring platform.
 
-## Vision
-
-A complete system where:
-1. Students log into OpenWebUI, each routed to their personal Letta agent
-2. All messages persisted to Honcho for long-term ToM modeling
-3. Agent context adapts based on which chat/module student is in
-4. Curriculum defined in markdown, hot-reloadable without redeploy
-5. Background process periodically enriches agent memory from Honcho insights
-6. New students smoothly onboarded with initial setup flow
-
----
-
 ## Current Status
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Completed                                │
-├─────────────────────────────────────────────────────────────────┤
-│  Phase 1: HTTP Service ✓                                        │
-│  Phase 2: User Identity ✓ (absorbed into Phase 1)               │
-│  Phase 3: Honcho Integration ✓                                  │
-│  Phase 4: Thread Context ✓                                      │
-│  Phase 5: Curriculum System ✓                                   │
-│  Phase 6: Background Worker ✓                                   │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-                    ┌──────────────────────────┐
-                    │     Next: Phase 7        │
-                    └──────────────────────────┘
-```
+| Phase | Status |
+|-------|--------|
+| 1-6 | **Complete** - HTTP Service, Honcho, Curriculum, Background Workers |
+| 7: Onboarding | Not Started |
 
 ---
 
-## Phase Overview
-
-| Phase | Name | Status | Dependencies |
-|-------|------|--------|--------------|
-| 1 | HTTP Service | **Complete** | - |
-| 2 | User Identity & Routing | **Complete** | Phase 1 |
-| 3 | Honcho Integration | **Complete** | Phase 1 |
-| 4 | Thread Context | **Complete** | Phase 1 |
-| 5 | Curriculum System | **Complete** | Phase 4 |
-| 6 | Background Worker | **Complete** | Phase 3 |
-| 7 | Student Onboarding | Not Started | Phase 5 |
-
-### Dependency Graph
-
-```
-Phase 1: HTTP Service (includes Phase 2)
-    │
-    ├── Phase 3: Honcho ──────┐
-    │       │                 │
-    │       └── Phase 6: Background Worker
-    │
-    └── Phase 4: Thread Context
-            │
-            └── Phase 5: Curriculum
-                    │
-                    └── Phase 7: Onboarding
-```
-
----
-
-## Phase 1: HTTP Service (Complete)
-
-Convert LettaStarter from a library to an HTTP service.
-
-### Deliverables
-
-- [x] FastAPI application on port 8100
-- [x] Health endpoint with Letta connection status
-- [x] Agent CRUD endpoints
-- [x] Synchronous chat endpoint
-- [x] SSE streaming chat endpoint
-- [x] Agent template system
-- [x] Strategy agent for RAG
-- [x] Langfuse tracing
-
-### Key Files
-
-- `src/letta_starter/server/main.py`
-- `src/letta_starter/server/agents.py`
-- `src/letta_starter/agents/templates.py`
-
----
-
-## Phase 2: User Identity & Routing (Complete)
-
-Ensure each student gets their own persistent agent.
-
-> **Note**: This phase was absorbed into Phase 1 during implementation.
-
-### Deliverables
-
-- [x] User ID extraction (`__user__["id"]`)
-- [x] Agent creation and lookup
-- [x] Agent caching for fast lookups
-- [x] Per-user agent naming convention (`youlab_{user_id}_{agent_type}`)
-
-### Deferred to Future Phases
-
-- First-interaction detection (Phase 7: Onboarding)
-- Course-specific memory fields (Phase 4: Thread Context)
-
----
-
-## Phase 3: Honcho Integration (Complete)
-
-Persist all messages to Honcho for theory-of-mind modeling.
-
-### Deliverables
-
-- [x] HonchoClient with lazy initialization
-- [x] Fire-and-forget message persistence
-- [x] Integration with `/chat` endpoint
-- [x] Integration with `/chat/stream` endpoint
-- [x] Health endpoint reports Honcho status
-- [x] Graceful degradation when Honcho unavailable
-- [x] Configuration via environment variables
-- [x] Unit and integration tests
-
-### Key Files
-
-- `src/letta_starter/honcho/client.py`
-- `src/letta_starter/config/settings.py` (ServiceSettings)
-- `src/letta_starter/server/main.py` (lifespan, endpoints)
-- `tests/test_honcho.py`
-- `tests/test_server_honcho.py`
-
-### What's NOT Included (Future Work)
-
-- Dialectic queries from Honcho (Phase 6)
-- Working representation updates (Phase 6)
-- ToM-informed agent behavior (Phase 6)
-
----
-
-## Phase 4: Thread Context (Complete)
-
-Chat title extraction and management for thread context.
-
-### Deliverables
-
-- [x] Chat title extraction from OpenWebUI database (`_get_chat_title`)
-- [x] Chat title passed to HTTP service in requests
-- [x] Chat title stored in Honcho as message metadata
-- [x] Chat title rename capability (`_set_chat_title`)
-- [x] Unit tests for title operations
-
-### Key Files
-
-- `src/letta_starter/pipelines/letta_pipe.py` (`_get_chat_title`, `_set_chat_title`)
-- `tests/test_pipe.py` (`TestGetChatTitle`, `TestSetChatTitle`)
-
-### What's NOT Included (Simplified Scope)
-
-Original plan included complex title parsing ("Module 1 / Step 2" format), context caching, and memory block updates. These were deferred as:
-- 1:1 OpenWebUI→Honcho thread mapping simplifies architecture
-- Primary course uses single thread
-- Title metadata already flows through system
-
----
-
-## Phase 5: Curriculum System (Complete)
-
-Load course definitions from TOML files.
-
-### Deliverables
-
-- [x] Define curriculum in TOML with course.toml and modules/
-- [x] Parse into Pydantic schemas (CourseConfig, ModuleConfig, StepConfig)
-- [x] Hot-reload on API endpoint
-- [x] Dynamic memory block generation from schema
-- [x] HTTP endpoints for curriculum management
-
-### Key Files
-
-- `src/letta_starter/curriculum/schema.py`
-- `src/letta_starter/curriculum/loader.py`
-- `src/letta_starter/curriculum/blocks.py`
-- `src/letta_starter/server/curriculum.py`
-- `config/courses/college-essay/course.toml`
-
----
-
-## Phase 6: Background Worker (Complete)
-
-Query Honcho dialectic and update agent memory on schedule or manual trigger.
-
-### Deliverables
-
-- [x] BackgroundAgentRunner execution engine
-- [x] MemoryEnricher for external memory updates
-- [x] Audit trails in archival memory
-- [x] HTTP endpoints for manual triggers
-- [x] TOML configuration for background agents
-
-### Key Files
-
-- `src/letta_starter/background/runner.py`
-- `src/letta_starter/memory/enricher.py`
-- `src/letta_starter/server/background.py`
-
----
-
-## Phase 7: Student Onboarding
+## Next: Phase 7 - Student Onboarding
 
 Handle new student first-time experience.
 
@@ -230,44 +33,48 @@ Handle new student first-time experience.
 
 ---
 
-## What We're NOT Doing
+## Completed Phases Summary
 
-Out of scope for current roadmap:
+### Phase 1: HTTP Service
+FastAPI service with agent management, streaming chat, strategy agent.
 
-- Full user management UI (admin dashboard)
-- Multi-facilitator support
-- Course marketplace / multi-course
-- Production deployment infrastructure
-- Automated pedagogical testing
-- Mobile-specific optimizations
+### Phase 2: User Identity
+Per-user agents via OpenWebUI integration, agent naming convention.
+
+### Phase 3: Honcho Integration
+Message persistence for theory-of-mind modeling, graceful degradation.
+
+### Phase 4: Thread Context
+Chat title extraction and metadata flow.
+
+### Phase 5: Curriculum System
+TOML-based course definitions with hot-reload.
+
+### Phase 6: Background Worker
+Scheduled Honcho queries with memory enrichment.
 
 ---
 
-## Verification Plan
+## Out of Scope
 
-### Automated
+- Full user management UI
+- Multi-facilitator support
+- Course marketplace
+- Production deployment infrastructure
+- Automated pedagogical testing
 
-- Unit tests for each component
-- Integration tests for message flow
-- Pre-commit verification
+---
 
-### Manual
+## Version History
 
-1. Create two test users in OpenWebUI
-2. Each sends messages in multiple chats
-3. Verify isolation (different agents)
-4. Verify continuity (same agent across sessions)
-5. Check Honcho dashboard for messages
-6. Trigger background process, verify updates
-7. Modify curriculum, verify hot-reload
-8. New user goes through onboarding
+| Version | Date | Milestone |
+|---------|------|-----------|
+| 0.1.0 | 2025-12-31 | Phase 1: HTTP Service |
+| - | 2026-01 | Phases 2-6 complete |
 
 ---
 
 ## Related Pages
 
 - [[Architecture]] - System design
-- [[HTTP-Service]] - Phase 1 implementation
-- [[Memory-System]] - Memory management
-- [[Agent-System]] - Agent templates
-
+- [[HTTP-Service]] - Service implementation

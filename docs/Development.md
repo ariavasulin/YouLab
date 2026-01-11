@@ -1,8 +1,8 @@
 # Development Guide
 
-[[README|← Back to Overview]]
+[[README|<- Back to Overview]]
 
-Guide for contributing to and developing YouLab.
+Complete guide for developing and contributing to YouLab.
 
 ## Prerequisites
 
@@ -12,229 +12,171 @@ Guide for contributing to and developing YouLab.
 
 ---
 
-## Initial Setup
+## Quick Start
 
 ```bash
-# Clone the repository
+# Clone and setup
 git clone <repo-url>
 cd YouLab
-
-# Run setup (installs deps + pre-commit hooks)
-make setup
-```
-
-This installs:
-- All project dependencies
-- Development tools (pytest, ruff, basedpyright)
-- Pre-commit hooks for automatic verification
-
----
-
-## Project Structure
-
-```
-src/letta_starter/
-├── agents/           # BaseAgent, templates, registry
-├── memory/           # Memory blocks and strategies
-├── pipelines/        # OpenWebUI Pipe integration
-├── server/           # FastAPI HTTP service
-│   └── strategy/     # Strategy agent endpoints
-├── observability/    # Logging and tracing
-├── config/           # Settings management
-└── main.py           # CLI entry point
-
-tests/
-├── conftest.py       # Shared fixtures
-├── test_memory.py    # Memory block tests
-├── test_templates.py # Agent template tests
-├── test_pipe.py      # Pipeline tests
-└── test_server/      # HTTP service tests
-    ├── test_endpoints.py
-    ├── test_agents.py
-    └── test_strategy/
+make setup  # Installs deps + pre-commit hooks
 ```
 
 ---
 
 ## Development Workflow
 
-### 1. Make Changes
+1. **Make changes** in `src/letta_starter/`
+2. **Run lint fix** frequently: `make lint-fix`
+3. **Verify before commit**: `make verify-agent`
 
-Edit files in `src/letta_starter/`.
-
-### 2. Run Lint Fix Frequently
-
-```bash
-make lint-fix
-```
-
-> **Important**: Run this after every file edit to catch issues early.
-
-### 3. Verify Before Commit
-
-```bash
-# Quick check (lint + typecheck)
-make check-agent
-
-# Full verification (lint + typecheck + tests)
-make verify-agent
-```
-
-### 4. Pre-commit Hooks
-
-Commits are automatically blocked if checks fail. The hooks run `make verify` before each commit.
+Pre-commit hooks run `make verify` automatically.
 
 ---
 
-## Agent-Optimized Commands
+## Commands Reference
 
-YouLab uses the "swallow success, show failure" pattern from HumanLayer:
+### Verification (Agent-Optimized)
 
-| Command | What It Does |
-|---------|--------------|
-| `make check-agent` | Lint + typecheck with minimal output |
+| Command | Description |
+|---------|-------------|
+| `make check-agent` | Quick: lint + typecheck, minimal output |
 | `make test-agent` | Tests only, fail-fast |
-| `make verify-agent` | Full verification suite |
+| `make verify-agent` | Full: lint + typecheck + tests |
 
-**On success**: Minimal output like `✓ Ruff check`, `✓ Typecheck`
+### Standard Commands
 
-**On failure**: Full error output for debugging
-
----
-
-## Adding New Features
-
-### Adding a New Agent Template
-
-1. Define the template in `agents/templates.py`:
-
-```python
-MY_TEMPLATE = AgentTemplate(
-    type_id="my-agent",
-    display_name="My Agent",
-    description="What this agent does",
-    persona=PersonaBlock(
-        name="MyAgent",
-        role="Specific role",
-        capabilities=["Capability 1", "Capability 2"],
-        tone="professional",
-        verbosity="concise",
-    ),
-)
-```
-
-2. Register in the registry:
-
-```python
-# In agents/default.py or where registry is configured
-from letta_starter.agents.templates import MY_TEMPLATE
-
-registry.register(MY_TEMPLATE)
-```
-
-3. Add tests in `tests/test_templates.py`.
-
-### Adding a New API Endpoint
-
-1. Add schema in `server/schemas.py`:
-
-```python
-class MyRequest(BaseModel):
-    field: str
-
-class MyResponse(BaseModel):
-    result: str
-```
-
-2. Add endpoint in `server/main.py`:
-
-```python
-@app.post("/my-endpoint", response_model=MyResponse)
-async def my_endpoint(request: MyRequest) -> MyResponse:
-    # Implementation
-    return MyResponse(result="...")
-```
-
-3. Add tests in `tests/test_server/test_endpoints.py`.
-
-### Adding Memory Block Fields
-
-1. Extend block in `memory/blocks.py`:
-
-```python
-class HumanBlock(BaseModel):
-    # Existing fields...
-    new_field: str | None = None
-```
-
-2. Update `to_memory_string()` serialization.
-
-3. Add tests in `tests/test_memory.py`.
+| Command | Description |
+|---------|-------------|
+| `make lint` | Run ruff check |
+| `make lint-fix` | Auto-fix lint issues |
+| `make typecheck` | Run basedpyright |
+| `make test` | Run pytest with coverage |
+| `make coverage-html` | Generate HTML coverage report |
 
 ---
 
-## Configuration for Development
+## Tooling Configuration
 
-Create a `.env` file:
+All tools are configured in `pyproject.toml`.
+
+### uv (Package Manager)
 
 ```bash
-cp .env.example .env
+uv sync              # Install dependencies
+uv run <command>     # Run command in venv
+uv add <package>     # Add dependency
 ```
 
-Minimum configuration:
+### Ruff (Linter + Formatter)
 
-```env
-# Required
-ANTHROPIC_API_KEY=your-key
-
-# Letta connection
-LETTA_BASE_URL=http://localhost:8283
-
-# Service settings (optional)
-YOULAB_SERVICE_HOST=127.0.0.1
-YOULAB_SERVICE_PORT=8100
+```bash
+make lint-fix        # Auto-fix and format
 ```
+
+Key settings:
+- Line length: 100
+- Target: Python 3.11
+- Uses ALL rules with sensible ignores
+
+### Basedpyright (Type Checker)
+
+```bash
+make typecheck
+```
+
+Strict mode with external library handling disabled.
+
+### Pre-commit
+
+Hooks run `make verify` before each commit. Bypass with `--no-verify` (emergency only).
 
 ---
 
-## Running Services
+## Testing
 
-### Start Letta Server
+### Running Tests
 
 ```bash
-pip install letta
-letta server
+make test-agent      # Quick, fail-fast
+make test            # Full with coverage
+make coverage-html   # Generate HTML report
 ```
 
-### Start HTTP Service
+### Test Structure
 
-```bash
-uv run letta-server
+```
+tests/
+├── conftest.py           # Shared fixtures
+├── test_memory.py        # Memory block tests
+├── test_templates.py     # Agent template tests
+├── test_pipe.py          # Pipeline tests
+└── test_server/          # HTTP service tests
 ```
 
-### Interactive CLI
+### Writing Tests
 
-```bash
-uv run letta-starter
+```python
+def test_persona_block_serialization(sample_persona_data):
+    """Test PersonaBlock serializes to memory string."""
+    persona = PersonaBlock(**sample_persona_data)
+    result = persona.to_memory_string()
+    assert "[IDENTITY]" in result
+
+@pytest.mark.asyncio
+async def test_agent_manager_cache():
+    """Test AgentManager caches agent IDs."""
+    manager = AgentManager(mock_client)
+    agent_id = await manager.get_or_create_agent("user1", "tutor")
+    cached_id = await manager.get_or_create_agent("user1", "tutor")
+    assert agent_id == cached_id
+```
+
+### Mocking Letta
+
+```python
+@pytest.fixture
+def mock_letta_client():
+    client = MagicMock()
+    client.agents.create = AsyncMock(return_value=MagicMock(id="agent-123"))
+    return client
 ```
 
 ---
 
-## Debugging
+## Code Style
 
-### Enable Debug Logging
+- Type annotations everywhere
+- Prefer composition over inheritance
+- Keep functions focused and small
 
-```env
-LOG_LEVEL=debug
+| Type | Convention | Example |
+|------|------------|---------|
+| Classes | PascalCase | `AgentManager` |
+| Functions | snake_case | `get_agent` |
+| Constants | UPPER_SNAKE | `DEFAULT_PORT` |
+| Private | _prefix | `_cache` |
+
+---
+
+## IDE Setup
+
+### VS Code
+
+Recommended extensions: Python, Pylance, Ruff
+
+```json
+{
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff"
+    }
+}
 ```
 
-### View Traces in Langfuse
+---
 
-1. Set Langfuse credentials in `.env`
-2. Visit your Langfuse dashboard
-3. Filter by `user_id` or `agent_id`
-
-### Common Issues
+## Common Issues
 
 | Issue | Solution |
 |-------|----------|
@@ -244,36 +186,7 @@ LOG_LEVEL=debug
 
 ---
 
-## Code Style
-
-### General Principles
-
-- Use type annotations everywhere
-- Prefer composition over inheritance
-- Keep functions focused and small
-- Document non-obvious behavior
-
-### Naming Conventions
-
-| Type | Convention | Example |
-|------|------------|---------|
-| Classes | PascalCase | `AgentManager` |
-| Functions | snake_case | `get_agent` |
-| Constants | UPPER_SNAKE | `DEFAULT_PORT` |
-| Private | _prefix | `_cache` |
-
-### Imports
-
-Organized by ruff:
-1. Standard library
-2. Third-party
-3. First-party (`letta_starter`)
-
----
-
 ## Related Pages
 
-- [[Testing]] - Test suite documentation
-- [[Tooling]] - Development tools
 - [[Configuration]] - Environment variables
-
+- [[Quickstart]] - Getting started

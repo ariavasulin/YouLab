@@ -5,36 +5,27 @@
 
 - **Core Systems**
   - [HTTP Service](HTTP-Service.md)
-  - [Memory System](Memory-System.md)
   - [Agent System](Agent-System.md)
+  - [Memory System](Memory-System.md)
   - [Agent Tools](Agent-Tools.md)
   - [Background Agents](Background-Agents.md)
-  - [Pipeline Integration](Pipeline.md)
-  - [Strategy Agent](Strategy-Agent.md)
-  - [Honcho Integration](Honcho.md)
+  - [Pipeline](Pipeline.md)
+  - [Honcho](Honcho.md)
 
 - **Configuration**
-  - [Environment Variables](Configuration.md)
-  - [Settings Classes](Settings.md)
+  - [Configuration](Configuration.md)
+  - [Course Schema](config-schema.md)
 
 - **Development**
   - [Development Guide](Development.md)
-  - [Testing](Testing.md)
-  - [Tooling](Tooling.md)
-
-- **Letta Reference**
-  - [Core Concepts](Letta-Concepts.md)
-  - [REST API](Letta-REST-API.md)
-  - [Streaming & Messages](Letta-Streaming.md)
-  - [Archival Memory](Letta-Archival.md)
-  - [Tool System](Letta-Tools.md)
-  - [Version Compatibility](Letta-Versions.md)
-  - [SDK Patterns](Letta-SDK.md)
 
 - **API Reference**
   - [API Endpoints](API.md)
   - [Schemas](Schemas.md)
 
+- **Letta**
+  - [Integration Patterns](Letta-Integration.md)
+  - [Quick Reference](Letta-Reference.md)
+
 - **Project**
   - [Roadmap](Roadmap.md)
-  - [Changelog](Changelog.md)
