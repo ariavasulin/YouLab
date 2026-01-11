@@ -2,7 +2,7 @@
 
 import pytest
 
-from letta_starter.memory.enricher import (
+from youlab_server.memory.enricher import (
     EnrichmentResult,
     MemoryEnricher,
     MergeStrategy,

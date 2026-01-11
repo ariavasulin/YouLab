@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from letta_starter.honcho.client import HonchoClient, create_persist_task
+from youlab_server.honcho.client import HonchoClient, create_persist_task
 
 
 class TestHonchoClient:

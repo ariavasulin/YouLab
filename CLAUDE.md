@@ -10,14 +10,14 @@ OpenWebUI → Pipeline → HTTP Service → Letta Server → Claude API
 ```
 
 - **OpenWebUI**: Chat frontend with Pipe extension system
-- **LettaStarter**: Python library providing memory management, observability, and agent factories
+- **YouLab Server**: Python library providing memory management, observability, and agent factories
 - **Letta**: Agent framework with persistent memory (currently single shared agent)
 - **Honcho**: Message persistence for theory-of-mind modeling
 
 ## Project Structure
 
 ```
-src/letta_starter/       # Python backend
+src/youlab_server/       # Python backend
   agents/                # BaseAgent + factory functions + AgentRegistry + templates
   memory/                # Memory blocks, rotation strategies, manager, enricher
   pipelines/             # OpenWebUI Pipe integration
@@ -65,9 +65,9 @@ Don't memorize - look things up. Use `./hack/claude-docs.sh` to query docs.
 make setup
 
 # Run the CLI
-uv run letta-starter             # Interactive mode (requires letta server)
-uv run letta-starter --agent X   # Use specific agent
-uv run letta-server              # Start HTTP service (requires letta server)
+uv run youlab                    # Interactive mode (requires letta server)
+uv run youlab --agent X          # Use specific agent
+uv run youlab-server             # Start HTTP service (requires letta server)
 
 # Verification (agent-optimized, minimal output)
 make verify-agent                # Full: lint + typecheck + tests
@@ -96,8 +96,8 @@ Requires Letta server: `pip install letta && letta server`
 
 Don't memorize file paths - search the codebase. Key entry points:
 
-- `src/letta_starter/server/main.py` - HTTP service entry point
-- `src/letta_starter/pipelines/letta_pipe.py` - OpenWebUI integration
+- `src/youlab_server/server/main.py` - HTTP service entry point
+- `src/youlab_server/pipelines/letta_pipe.py` - OpenWebUI integration
 - `config/courses/college-essay/course.toml` - Course configuration
 
 For everything else: `./hack/claude-docs.sh search "<topic>"` or grep the codebase.

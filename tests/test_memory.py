@@ -2,12 +2,12 @@
 
 import pytest
 
-from letta_starter.memory.blocks import (
+from youlab_server.memory.blocks import (
     HumanBlock,
     PersonaBlock,
     SessionState,
 )
-from letta_starter.memory.strategies import (
+from youlab_server.memory.strategies import (
     AdaptiveRotation,
     AggressiveRotation,
     ContextMetrics,
