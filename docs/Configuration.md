@@ -127,7 +127,7 @@ LANGFUSE_ENABLED=false
 
 ```bash
 # .env for production
-LETTA_BASE_URL=http://letta-server:8283
+LETTA_BASE_URL=http://youlab-server:8283
 OPENAI_API_KEY=sk-prod-key-here
 
 LOG_LEVEL=INFO
@@ -161,7 +161,7 @@ YOULAB_SERVICE_HOST=0.0.0.0
 
 YouLab uses two Pydantic settings classes for type-safe configuration.
 
-**Location**: `src/letta_starter/config/settings.py`
+**Location**: `src/youlab_server/config/settings.py`
 
 | Class | Prefix | Use Case |
 |-------|--------|----------|
@@ -173,7 +173,7 @@ YouLab uses two Pydantic settings classes for type-safe configuration.
 General application settings, loaded from `.env`:
 
 ```python
-from letta_starter.config import get_settings
+from youlab_server.config import get_settings
 
 settings = get_settings()
 print(settings.letta_base_url)
@@ -184,7 +184,7 @@ print(settings.letta_base_url)
 HTTP service-specific settings with `YOULAB_SERVICE_` prefix:
 
 ```python
-from letta_starter.config.settings import ServiceSettings
+from youlab_server.config.settings import ServiceSettings
 
 settings = ServiceSettings()
 uvicorn.run(app, host=settings.host, port=settings.port)
