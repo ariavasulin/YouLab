@@ -36,6 +36,17 @@ class FileMapping:
     status: str
 
 
+@dataclass
+class FolderMapping:
+    """Tracks Letta folder ↔ OpenWebUI Knowledge mapping."""
+
+    letta_folder_id: str
+    letta_folder_name: str
+    openwebui_knowledge_id: str
+    last_synced: str  # ISO format
+    status: str  # synced, pending, error
+
+
 class SyncMappingStore:
     """
     Persistent storage for sync mappings.
@@ -55,6 +66,7 @@ class SyncMappingStore:
         self.storage_path = storage_path
         self.note_mappings: dict[str, NoteMapping] = {}
         self.file_mappings: dict[str, FileMapping] = {}
+        self.folder_mappings: dict[str, FolderMapping] = {}  # keyed by letta_folder_id
         self._load()
 
     def _load(self) -> None:
@@ -67,11 +79,14 @@ class SyncMappingStore:
                 self.note_mappings[note_id] = NoteMapping(**m)
             for file_id, m in data.get("files", {}).items():
                 self.file_mappings[file_id] = FileMapping(**m)
+            for folder_id, m in data.get("folders", {}).items():
+                self.folder_mappings[folder_id] = FolderMapping(**m)
             logger.debug(
                 "Loaded sync mappings",
                 extra={
                     "notes": len(self.note_mappings),
                     "files": len(self.file_mappings),
+                    "folders": len(self.folder_mappings),
                 },
             )
         except Exception as e:
@@ -83,6 +98,7 @@ class SyncMappingStore:
         data = {
             "notes": {k: asdict(v) for k, v in self.note_mappings.items()},
             "files": {k: asdict(v) for k, v in self.file_mappings.items()},
+            "folders": {k: asdict(v) for k, v in self.folder_mappings.items()},
         }
         self.storage_path.write_text(json.dumps(data, indent=2))
 
@@ -114,6 +130,28 @@ class SyncMappingStore:
         """Delete a file mapping."""
         if openwebui_file_id in self.file_mappings:
             del self.file_mappings[openwebui_file_id]
+            self._save()
+
+    def get_folder_mapping(self, letta_folder_id: str) -> FolderMapping | None:
+        """Get mapping for a folder by Letta folder ID."""
+        return self.folder_mappings.get(letta_folder_id)
+
+    def get_folder_mapping_by_name(self, folder_name: str) -> FolderMapping | None:
+        """Get mapping for a folder by folder name."""
+        for m in self.folder_mappings.values():
+            if m.letta_folder_name == folder_name:
+                return m
+        return None
+
+    def set_folder_mapping(self, mapping: FolderMapping) -> None:
+        """Save or update a folder mapping."""
+        self.folder_mappings[mapping.letta_folder_id] = mapping
+        self._save()
+
+    def delete_folder_mapping(self, letta_folder_id: str) -> None:
+        """Delete a folder mapping."""
+        if letta_folder_id in self.folder_mappings:
+            del self.folder_mappings[letta_folder_id]
             self._save()
 
     @staticmethod

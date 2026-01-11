@@ -2,12 +2,16 @@
 
 import json
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 from letta_client import Letta
 
 from youlab_server.curriculum import curriculum
+
+if TYPE_CHECKING:
+    from youlab_server.curriculum.schema import AgentFoldersConfig
+    from youlab_server.server.sync.service import FileSyncService
 
 log = structlog.get_logger()
 
@@ -111,6 +115,45 @@ class AgentManager:
 
         return block.id
 
+    async def _attach_folders(
+        self,
+        agent_id: str,
+        user_id: str,
+        folder_config: "AgentFoldersConfig",
+        sync_service: "FileSyncService",
+    ) -> list[str]:
+        """
+        Attach configured folders to agent.
+
+        Args:
+            agent_id: The agent to attach folders to.
+            user_id: User identifier for private folder naming.
+            folder_config: Folder configuration from course TOML.
+            sync_service: File sync service for folder management.
+
+        Returns:
+            List of attached folder names.
+
+        """
+        attached: list[str] = []
+
+        # Attach shared folders
+        for folder_name in folder_config.shared:
+            folder_id = await sync_service.ensure_folder(folder_name)
+            self.client.agents.folders.attach(agent_id=agent_id, folder_id=folder_id)
+            attached.append(folder_name)
+            log.info("attached_shared_folder", agent_id=agent_id, folder=folder_name)
+
+        # Attach user's private folder
+        if folder_config.private:
+            private_folder = f"user_{user_id}_notes"
+            folder_id = await sync_service.ensure_folder(private_folder)
+            self.client.agents.folders.attach(agent_id=agent_id, folder_id=folder_id)
+            attached.append(private_folder)
+            log.info("attached_private_folder", agent_id=agent_id, folder=private_folder)
+
+        return attached
+
     async def rebuild_cache(self) -> int:
         """Rebuild cache from Letta on startup. Returns count of agents found."""
         agents = self.client.agents.list()
@@ -144,7 +187,7 @@ class AgentManager:
 
         return None
 
-    def create_agent(
+    async def create_agent(
         self,
         user_id: str,
         agent_type: str = "tutor",
@@ -168,13 +211,13 @@ class AgentManager:
         # Map legacy "tutor" type to "default" course
         course_id = "default" if agent_type == "tutor" else agent_type
 
-        return self.create_agent_from_curriculum(
+        return await self.create_agent_from_curriculum(
             user_id=user_id,
             course_id=course_id,
             user_name=user_name,
         )
 
-    def create_agent_from_curriculum(
+    async def create_agent_from_curriculum(
         self,
         user_id: str,
         course_id: str,
@@ -296,6 +339,20 @@ class AgentManager:
 
         self._cache[(user_id, agent_type)] = agent.id
 
+        # Attach folders if sync service is available and folder config exists
+        attached_folders: list[str] = []
+        if course.agent.folders and (course.agent.folders.shared or course.agent.folders.private):
+            from youlab_server.server.sync.router import get_file_sync_optional
+
+            sync_service = get_file_sync_optional()
+            if sync_service is not None:
+                attached_folders = await self._attach_folders(
+                    agent_id=agent.id,
+                    user_id=user_id,
+                    folder_config=course.agent.folders,
+                    sync_service=sync_service,
+                )
+
         log.info(
             "agent_created_from_curriculum",
             user_id=user_id,
@@ -304,6 +361,7 @@ class AgentManager:
             blocks=list(course.blocks.keys()),
             shared_blocks=len(shared_block_ids),
             tools=tool_names,
+            folders=attached_folders,
         )
 
         return agent.id
