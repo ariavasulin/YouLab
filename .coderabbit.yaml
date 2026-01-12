@@ -144,7 +144,8 @@ reviews:
 # Knowledge base settings
 knowledge_base:
   opt_out: false
-  code_guidelines: true  # Reads CLAUDE.md automatically
+  code_guidelines:
+    enabled: true  # Reads CLAUDE.md automatically
   learnings:
     scope: "local"  # Learn patterns from this repo only
 
