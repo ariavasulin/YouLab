@@ -1,0 +1,161 @@
+# CodeRabbit Configuration for YouLab
+# Docs: https://docs.coderabbit.ai/reference/configuration
+
+language: "en-US"
+tone_instructions: "Be concise. Focus on bugs, security issues, and Python best practices. This is a learning project so constructive suggestions are welcome."
+
+reviews:
+  # Review thoroughness - assertive catches more issues
+  profile: "assertive"
+
+  # Don't block merges - warnings only
+  request_changes_workflow: false
+
+  # Generate PR summaries
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Auto-review settings
+  auto_review:
+    enabled: true
+    drafts: false  # Skip draft PRs
+
+  # Exclude generated/vendor code
+  path_filters:
+    - "!**/__pycache__/**"
+    - "!**/.venv/**"
+    - "!**/node_modules/**"
+    - "!**/*.egg-info/**"
+    - "!**/htmlcov/**"
+    - "!**/.pytest_cache/**"
+    - "!**/.ruff_cache/**"
+    # Exclude nested OpenWebUI repo (has its own git)
+    - "!OpenWebUI/**"
+
+  # Path-specific review instructions
+  path_instructions:
+    - path: "src/youlab_server/**/*.py"
+      instructions: |
+        Focus on:
+        - Type hint completeness on public functions
+        - Proper async/await patterns
+        - Pydantic model validation
+        - Exception handling with context
+        - Potential security issues (injection, secrets)
+
+        Note: This codebase uses structlog for logging, not print().
+        The project uses Letta for AI agents and Honcho for message persistence.
+
+    - path: "src/youlab_server/server/**/*.py"
+      instructions: |
+        FastAPI-specific checks:
+        - Proper dependency injection patterns
+        - Correct HTTP status codes
+        - Request/response model validation
+        - Authentication/authorization patterns
+        - Rate limiting considerations
+
+    - path: "src/youlab_server/agents/**/*.py"
+      instructions: |
+        Letta agent patterns:
+        - Proper agent lifecycle management
+        - Memory block handling
+        - Tool definitions completeness
+        - Error recovery in agent operations
+
+    - path: "src/youlab_server/memory/**/*.py"
+      instructions: |
+        Memory management:
+        - Thread safety for concurrent access
+        - Proper cleanup/disposal patterns
+        - Memory leak prevention
+
+    - path: "tests/**/*.py"
+      instructions: |
+        Test quality:
+        - Adequate edge case coverage
+        - Proper pytest fixture usage
+        - Async test markers where needed
+        - Descriptive test names
+        - Avoid testing implementation details
+
+    - path: "config/**/*.toml"
+      instructions: |
+        TOML configuration:
+        - Valid syntax
+        - Required fields present
+        - Consistent naming conventions
+
+    - path: "docs/**/*.md"
+      instructions: |
+        Documentation:
+        - Check if content matches current code behavior
+        - Flag outdated API references
+        - Verify code examples are syntactically valid
+
+  # Pre-merge checks (warnings only)
+  pre_merge_checks:
+    docstrings:
+      mode: "warning"
+      threshold: 50  # Start low, can increase later
+    title:
+      mode: "warning"
+    description:
+      mode: "warning"
+    custom_checks:
+      - name: "No Hardcoded Secrets"
+        mode: "warning"
+        instructions: |
+          Check for hardcoded API keys, passwords, tokens, or secrets.
+          Secrets should be loaded from environment variables or .env files.
+      - name: "Deprecated Module Usage"
+        mode: "warning"
+        instructions: |
+          Flag imports from deprecated modules (per CLAUDE.md):
+          - agents/templates.py (use config/courses/*.toml)
+          - agents/default.py (use AgentManager.create_agent())
+          - agents/base.py (use Letta agents via AgentManager)
+          - memory/manager.py (use agent-driven memory)
+          - memory/blocks.py PersonaBlock/HumanBlock (use dynamic TOML blocks)
+
+  # Integrated tools
+  tools:
+    # Python linting - Ruff already runs locally, but CodeRabbit can catch PR-only issues
+    ruff:
+      enabled: true
+
+    # Security scanning
+    semgrep:
+      enabled: true
+      config_file: ".semgrep.yaml"
+    gitleaks:
+      enabled: true
+
+    # Shell scripts
+    shellcheck:
+      enabled: true
+
+    # Markdown
+    markdownlint:
+      enabled: true
+
+# Knowledge base settings
+knowledge_base:
+  opt_out: false
+  code_guidelines: true  # Reads CLAUDE.md automatically
+  learnings:
+    scope: "local"  # Learn patterns from this repo only
+
+# Docstring generation settings
+code_generation:
+  docstrings:
+    path_instructions:
+      - path: "src/**/*.py"
+        instructions: |
+          Use Google-style docstrings:
+          - Brief one-line summary
+          - Args section with types and descriptions
+          - Returns section with type and description
+          - Raises section for exceptions
