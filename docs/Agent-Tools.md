@@ -88,20 +88,23 @@ set_user_context(agent_id="agent-abc", user_id="user123")
 
 ## edit_memory_block
 
-Update a field in the agent's memory blocks.
+Propose an update to a user's memory block.
 
 **Location**: `src/youlab_server/tools/memory.py`
 
+> **Important**: This tool creates a **pending diff** that requires user approval. Changes are NOT applied immediately.
+
 ### Usage
 
-Agents call this tool to record learned information:
+Agents call this tool to propose changes to user memory:
 
 ```python
 edit_memory_block(
-    block="human",
-    field="facts",
-    content="Student is applying to Stanford and MIT",
+    block="student",
+    field="strengths",
+    content="Strong analytical thinking",
     strategy="append",
+    reasoning="Observed during problem-solving discussion",
 )
 ```
 
@@ -109,17 +112,11 @@ edit_memory_block(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `block` | string | Required | `"human"` or `"persona"` |
+| `block` | string | Required | Block label (e.g., `"student"`, `"journey"`) |
 | `field` | string | Required | Field to update |
 | `content` | string | Required | Content to add/replace |
 | `strategy` | string | `"append"` | Merge strategy |
-
-**Available Fields**:
-
-| Block | Fields |
-|-------|--------|
-| `human` | `context_notes`, `facts`, `preferences` |
-| `persona` | `constraints`, `expertise` |
+| `reasoning` | string | `""` | **Explanation of why** this change is proposed |
 
 **Merge Strategies**:
 
@@ -131,18 +128,21 @@ edit_memory_block(
 
 ### Returns
 
-Confirmation message or error description.
+Confirmation that the proposal was created:
 
-### Protected Fields
+```
+Proposed change to student.strengths (ID: abc12345).
+The user will review and approve/reject this suggestion.
+```
 
-Some fields cannot be edited by agents:
+### Pending Diff Workflow
 
-| Protected Field | Reason |
-|-----------------|--------|
-| `persona.name` | Identity should not change |
-| `persona.role` | Role should not change |
-
-Attempting to edit protected fields returns an error.
+1. Agent calls `edit_memory_block` with reasoning
+2. System creates `PendingDiff` in user storage
+3. User sees pending change in UI
+4. User approves → Change applied, git commit created
+5. User rejects → Change discarded
+6. New proposals for same block supersede older ones
 
 ### Example Prompts
 
@@ -150,18 +150,22 @@ Include in agent persona:
 
 ```
 You have access to the edit_memory_block tool. Use it to:
-- Record important facts about the student
-- Note preferences for future reference
-- Update context based on new information
+- Propose updates to what you've learned about the student
+- Suggest adding new strengths or insights
+- Recommend updating the learning journey
+
+IMPORTANT:
+- Changes require user approval - explain your reasoning clearly
+- The reasoning field helps users understand WHY you're suggesting this change
+- Be specific and evidence-based in your proposals
 
 Example: edit_memory_block(
-    block="human",
-    field="facts",
-    content="Student prefers morning study sessions",
-    strategy="append"
+    block="student",
+    field="background",
+    content="Senior year, applying to CS programs",
+    strategy="replace",
+    reasoning="Student mentioned they are in their final year and focused on CS applications"
 )
-
-IMPORTANT: Only store factual, relevant information. Don't overwrite existing content unless correcting errors.
 ```
 
 ---

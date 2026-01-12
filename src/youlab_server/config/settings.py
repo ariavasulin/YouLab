@@ -195,3 +195,9 @@ class ServiceSettings(BaseSettings):
         default=".data",
         description="Directory for persistent data (sync mappings, etc.)",
     )
+
+    # User storage
+    user_storage_dir: str = Field(
+        default=".data/users",
+        description="Base directory for user git storage",
+    )
