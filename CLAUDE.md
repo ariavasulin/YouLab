@@ -88,6 +88,12 @@ npx serve docs                   # Serve docs locally at http://localhost:3000
 
 Pre-commit hooks run `make verify` automatically - commits are blocked if checks fail.
 
+## Code Review
+
+CodeRabbit provides AI code review on all PRs. Config: `.coderabbit.yaml`, `.semgrep.yaml`
+
+PR commands: `@coderabbitai review`, `@coderabbitai full review`, `@coderabbitai generate docstrings`
+
 **Claude**: Run `make lint-fix` frequently during development and after every file edit to catch issues early.
 
 **Claude**: Always use the `-agent` variants for verification. They implement HumanLayer's "swallow success, show failure" pattern:

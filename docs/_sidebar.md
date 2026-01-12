@@ -15,6 +15,7 @@
 - **Configuration**
   - [Configuration](Configuration.md)
   - [Course Schema](config-schema.md)
+  - [Module Metadata](module-metadata-schema.md)
 
 - **Development**
   - [Development Guide](Development.md)
