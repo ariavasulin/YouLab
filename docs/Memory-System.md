@@ -6,6 +6,90 @@
 
 The memory system provides structured, token-efficient context management for Letta agents.
 
+---
+
+## User-Scoped Storage (New)
+
+User memory is now stored in git-versioned directories with full history tracking.
+
+### Architecture
+
+```
+.data/users/{user_id}/
+    .git/                    # Full version history
+    blocks/
+        student.toml         # User profile block
+        journey.toml         # Learning journey block
+        engagement_strategy.toml
+    pending_diffs/
+        {diff_id}.json       # Agent-proposed changes awaiting approval
+```
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `GitUserStorage` | `storage/git.py` | Git-backed file storage per user |
+| `UserBlockManager` | `storage/blocks.py` | User-scoped block operations |
+| `PendingDiff` | `storage/diffs.py` | Agent-proposed changes |
+| `PendingDiffStore` | `storage/diffs.py` | JSON storage for diffs |
+
+### Block Format
+
+Blocks are stored as TOML files and converted to Markdown for user editing:
+
+**TOML (storage)**:
+```toml
+name = "Alice"
+background = "Computer science student"
+strengths = ["Creativity", "Communication"]
+```
+
+**Markdown (editing)**:
+```markdown
+---
+block: student
+---
+
+## Name
+Alice
+
+## Background
+Computer science student
+
+## Strengths
+- Creativity
+- Communication
+```
+
+### Pending Diffs
+
+When agents call `edit_memory_block`, changes are **not applied immediately**. Instead:
+
+1. Agent proposes change → `PendingDiff` created
+2. User reviews in UI → Approve or Reject
+3. If approved → Change applied, git commit created
+4. Older pending diffs for same block are superseded
+
+This ensures users maintain control over their memory data.
+
+### Version History
+
+Every block change creates a git commit:
+
+```python
+manager = UserBlockManager(user_id, storage)
+
+# View history
+history = manager.get_history("student", limit=10)
+# [{"sha": "abc123", "message": "Update name", "author": "user", ...}]
+
+# Restore previous version
+manager.restore_version("student", "abc123")
+```
+
+---
+
 ## Overview
 
 ```

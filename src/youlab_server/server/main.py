@@ -15,6 +15,7 @@ from youlab_server.honcho.client import create_persist_task
 from youlab_server.server.agents import AgentManager
 from youlab_server.server.background import initialize_background
 from youlab_server.server.background import router as background_router
+from youlab_server.server.blocks import router as blocks_router
 from youlab_server.server.curriculum import router as curriculum_router
 from youlab_server.server.schemas import (
     AgentListResponse,
@@ -29,6 +30,9 @@ from youlab_server.server.strategy import init_strategy_manager
 from youlab_server.server.strategy import router as strategy_router
 from youlab_server.server.sync import FileSyncService, set_file_sync, sync_router
 from youlab_server.server.tracing import trace_chat, trace_generation
+from youlab_server.server.users import router as users_router
+from youlab_server.server.users import set_storage_manager
+from youlab_server.storage.git import GitUserStorageManager
 from youlab_server.tools.curriculum import advance_lesson
 from youlab_server.tools.dialectic import query_honcho, set_honcho_client, set_user_context
 from youlab_server.tools.memory import edit_memory_block, set_letta_client
@@ -44,6 +48,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("starting_service", host=settings.host, port=settings.port)
     app.state.agent_manager = AgentManager(letta_base_url=settings.letta_base_url)
     init_strategy_manager(letta_base_url=settings.letta_base_url)
+
+    # Initialize user storage manager
+    storage_manager = GitUserStorageManager(settings.user_storage_dir)
+    set_storage_manager(storage_manager)
+    log.info("user_storage_initialized", base_dir=settings.user_storage_dir)
 
     # Initialize Honcho client (if enabled)
     if settings.honcho_enabled:
@@ -130,6 +139,8 @@ app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
 app.include_router(background_router)
 app.include_router(curriculum_router)
 app.include_router(sync_router)
+app.include_router(users_router)
+app.include_router(blocks_router)
 
 
 def get_agent_manager() -> AgentManager:

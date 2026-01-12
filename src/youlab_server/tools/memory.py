@@ -1,30 +1,21 @@
-"""Memory block editing tool for Letta agents."""
+"""
+Memory block editing tool for Letta agents.
+
+This module provides the edit_memory_block tool that agents use to propose
+changes to user memory blocks. Changes create pending diffs that require
+user approval before being applied.
+"""
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import structlog
-
-if TYPE_CHECKING:
-    from youlab_server.memory.blocks import HumanBlock, PersonaBlock
 
 log = structlog.get_logger()
 
 # Global references
 _letta_client: Any = None
-
-# Protected fields that require explicit override
-PROTECTED_FIELDS = {"persona.name", "persona.role"}
-
-
-class MergeStrategy(str, Enum):
-    """Strategy for merging new content with existing."""
-
-    APPEND = "append"  # Add to existing list/content
-    REPLACE = "replace"  # Overwrite existing content
-    LLM_DIFF = "llm_diff"  # Use LLM to intelligently merge
 
 
 def set_letta_client(client: Any) -> None:
@@ -38,190 +29,80 @@ def edit_memory_block(
     field: str,
     content: str,
     strategy: str = "append",
+    reasoning: str = "",
     agent_state: dict[str, Any] | None = None,
 ) -> str:
     """
-    Update a field in your memory blocks.
+    Propose an update to a memory block.
 
-    Use this tool to:
-    - Record learned facts about the student
-    - Update context notes with new information
-    - Adjust your communication style based on insights
+    This creates a pending diff that the user must approve.
+    The change is NOT applied immediately.
 
     Args:
-        block: Which memory block to edit:
-               - "human": Student context (facts, preferences, notes)
-               - "persona": Your behavior (constraints, style)
-        field: Which field to update:
-               - human: "context_notes", "facts", "preferences"
-               - persona: "constraints", "expertise"
+        block: Which memory block to edit (e.g., "student", "journey")
+        field: Which field to update
         content: The content to add or replace
-        strategy: How to merge with existing content:
-                 - "append": Add to existing (default, safe)
-                 - "replace": Overwrite existing
-                 - "llm_diff": Intelligently merge old and new
-        agent_state: Agent state injected by Letta (contains agent_id)
+        strategy: How to merge: "append", "replace", or "llm_diff"
+        reasoning: Explain WHY you're proposing this change
+        agent_state: Agent state injected by Letta
 
     Returns:
-        Confirmation of the update or error message.
+        Confirmation that the proposal was created
 
     """
-    if _letta_client is None:
-        return "Memory system unavailable. Update not applied."
+    from youlab_server.server.users import get_storage_manager
+    from youlab_server.storage.blocks import UserBlockManager
 
     agent_id = agent_state.get("agent_id") if agent_state else None
-    if not agent_id:
-        return "Unable to identify agent. Update not applied."
+    user_id = agent_state.get("user_id") if agent_state else None
 
-    # Check protected fields
-    field_key = f"{block}.{field}"
-    if field_key in PROTECTED_FIELDS:
-        log.warning(
-            "protected_field_edit_attempted",
-            agent_id=agent_id,
-            field=field_key,
-        )
-        return (
-            f"Cannot edit protected field '{field_key}'. This field requires manual configuration."
-        )
+    if not agent_id or not user_id:
+        return "Unable to identify agent or user. Proposal not created."
 
     try:
-        strategy_enum = MergeStrategy(strategy)
-    except ValueError:
-        strategy_enum = MergeStrategy.APPEND
+        storage_manager = get_storage_manager()
+        user_storage = storage_manager.get(user_id)
 
-    try:
-        result = _apply_memory_edit(
+        # Check if user storage exists
+        if not user_storage.exists:
+            log.warning(
+                "user_storage_not_found",
+                user_id=user_id,
+                agent_id=agent_id,
+            )
+            return f"User storage not initialized for {user_id}. Proposal not created."
+
+        manager = UserBlockManager(user_id, user_storage, letta_client=_letta_client)
+
+        diff = manager.propose_edit(
             agent_id=agent_id,
-            block=block,
+            block_label=block,
             field=field,
-            content=content,
-            strategy=strategy_enum,
+            operation=strategy,
+            proposed_value=content,
+            reasoning=reasoning or "No reasoning provided",
         )
 
         log.info(
-            "memory_block_edited",
+            "memory_edit_proposed",
             agent_id=agent_id,
+            user_id=user_id,
             block=block,
             field=field,
-            strategy=strategy,
-            content_preview=content[:50],
-            source="agent_tool",
+            diff_id=diff.id[:8],
         )
 
-        return result
+        return (
+            f"Proposed change to {block}.{field} (ID: {diff.id[:8]}). "
+            f"The user will review and approve/reject this suggestion."
+        )
 
     except Exception as e:
         log.error(
-            "memory_edit_failed",
+            "propose_edit_failed",
             agent_id=agent_id,
+            user_id=user_id,
             block=block,
-            field=field,
             error=str(e),
         )
-        return f"Failed to update memory: {e}"
-
-
-def _apply_memory_edit(
-    agent_id: str,
-    block: str,
-    field: str,
-    content: str,
-    strategy: MergeStrategy,
-) -> str:
-    """Apply the memory edit using MemoryManager."""
-    from youlab_server.memory.manager import MemoryManager
-
-    manager = MemoryManager(
-        client=_letta_client,
-        agent_id=agent_id,
-    )
-
-    if block == "human":
-        human = manager.get_human_block()
-        _update_human_field(human, field, content, strategy)
-        manager.update_human(human)
-        return f"Updated human.{field} via {strategy.value}"
-
-    if block == "persona":
-        persona = manager.get_persona_block()
-        _update_persona_field(persona, field, content, strategy)
-        manager.update_persona(persona)
-        return f"Updated persona.{field} via {strategy.value}"
-
-    return f"Unknown block '{block}'. Use 'human' or 'persona'."
-
-
-def _update_human_field(
-    human: HumanBlock,
-    field: str,
-    content: str,
-    strategy: MergeStrategy,
-) -> None:
-    """Update a field on the human block."""
-    if field == "context_notes":
-        if strategy == MergeStrategy.REPLACE:
-            human.context_notes = [content]
-        elif strategy == MergeStrategy.APPEND:
-            human.add_context_note(content)
-        elif strategy == MergeStrategy.LLM_DIFF:
-            merged = _llm_merge(human.context_notes, content)
-            human.context_notes = [merged]
-
-    elif field == "facts":
-        if strategy == MergeStrategy.REPLACE:
-            human.facts = [content]
-        elif strategy == MergeStrategy.APPEND:
-            human.add_fact(content)
-        elif strategy == MergeStrategy.LLM_DIFF:
-            merged = _llm_merge(human.facts, content)
-            human.facts = [merged]
-
-    elif field == "preferences":
-        if strategy == MergeStrategy.REPLACE:
-            human.preferences = [content]
-        elif strategy == MergeStrategy.APPEND:
-            human.add_preference(content)
-        elif strategy == MergeStrategy.LLM_DIFF:
-            merged = _llm_merge(human.preferences, content)
-            human.preferences = [merged]
-    else:
-        raise ValueError(f"Unknown human field: {field}")
-
-
-def _update_persona_field(
-    persona: PersonaBlock,
-    field: str,
-    content: str,
-    strategy: MergeStrategy,
-) -> None:
-    """Update a field on the persona block."""
-    if field == "constraints":
-        if strategy == MergeStrategy.REPLACE:
-            persona.constraints = [content]
-        elif strategy == MergeStrategy.APPEND:
-            if content not in persona.constraints:
-                persona.constraints.append(content)
-        elif strategy == MergeStrategy.LLM_DIFF:
-            merged = _llm_merge(persona.constraints, content)
-            persona.constraints = [merged]
-
-    elif field == "expertise":
-        if strategy == MergeStrategy.REPLACE:
-            persona.expertise = [content]
-        elif strategy == MergeStrategy.APPEND:
-            if content not in persona.expertise:
-                persona.expertise.append(content)
-        elif strategy == MergeStrategy.LLM_DIFF:
-            merged = _llm_merge(persona.expertise, content)
-            persona.expertise = [merged]
-    else:
-        raise ValueError(f"Unknown persona field: {field}")
-
-
-def _llm_merge(existing: list[str] | str, new_content: str) -> str:
-    """Use LLM to intelligently merge existing and new content."""
-    # TODO: Implement LLM-based merging
-    # For now, fall back to append behavior
-    existing_str = "; ".join(existing) if isinstance(existing, list) else existing
-    return f"{existing_str}; {new_content}"
+        return f"Failed to create proposal: {e}"
