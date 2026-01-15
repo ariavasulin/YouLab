@@ -43,10 +43,21 @@ def initialized_user(storage_manager):
     user_storage = storage_manager.get("test-user")
     user_storage.init()
 
-    # Create a student block
+    # Create a student block (markdown format)
     user_storage.write_block(
         "student",
-        'name = "Alice"\nbackground = "Computer science student"',
+        """---
+block: student
+---
+
+Alice is a computer science student.
+
+## Name
+Alice
+
+## Background
+Computer science student
+""",
         message="Initialize student block",
         author="system",
     )
@@ -54,7 +65,13 @@ def initialized_user(storage_manager):
     # Create a journey block
     user_storage.write_block(
         "journey",
-        'progress = "Module 1"',
+        """---
+block: journey
+---
+
+## Progress
+Module 1
+""",
         message="Initialize journey block",
         author="system",
     )
@@ -92,7 +109,7 @@ class TestListBlocksEndpoint:
             block_label="student",
             field="name",
             operation="replace",
-            proposed_value='name = "Bob"',
+            proposed_value="Bob",
             reasoning="Test",
         )
 
@@ -116,17 +133,17 @@ class TestGetBlockEndpoint:
     """Tests for GET /users/{user_id}/blocks/{label} endpoint."""
 
     def test_get_block_returns_detail(self, blocks_test_client, initialized_user):
-        """Get block returns TOML and markdown content."""
+        """Get block returns markdown content."""
         response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
 
         assert response.status_code == 200
         data = response.json()
 
         assert data["label"] == "student"
-        assert 'name = "Alice"' in data["content_toml"]
-        assert "---" in data["content_markdown"]
-        assert "block: student" in data["content_markdown"]
-        assert "Alice" in data["content_markdown"]
+        assert "---" in data["content"]
+        assert "block: student" in data["content"]
+        assert "Alice" in data["body"]
+        assert data["metadata"]["block"] == "student"
 
     def test_get_block_not_found(self, blocks_test_client, initialized_user):
         """Get block returns 404 for nonexistent block."""
@@ -139,21 +156,17 @@ class TestGetBlockEndpoint:
 class TestUpdateBlockEndpoint:
     """Tests for PUT /users/{user_id}/blocks/{label} endpoint."""
 
-    def test_update_block_from_markdown(self, blocks_test_client, initialized_user):
+    def test_update_block(self, blocks_test_client, initialized_user):
         """Update block from markdown content."""
-        markdown = """---
+        content = """---
 block: student
 ---
 
-## Name
-Bob
-
-## Background
-Updated background
+Bob is an updated student.
 """
         response = blocks_test_client.put(
             f"/users/{initialized_user}/blocks/student",
-            json={"content": markdown, "format": "markdown"},
+            json={"content": content},
         )
 
         assert response.status_code == 200
@@ -163,32 +176,14 @@ Updated background
 
         # Verify content updated
         get_response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
-        assert "Bob" in get_response.json()["content_toml"]
-
-    def test_update_block_from_toml(self, blocks_test_client, initialized_user):
-        """Update block from TOML content."""
-        toml_content = 'name = "Charlie"\nbackground = "New background"'
-
-        response = blocks_test_client.put(
-            f"/users/{initialized_user}/blocks/student",
-            json={"content": toml_content, "format": "toml"},
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data["commit_sha"]) == 40
-
-        # Verify content updated
-        get_response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
-        assert 'name = "Charlie"' in get_response.json()["content_toml"]
+        assert "Bob" in get_response.json()["body"]
 
     def test_update_block_with_custom_message(self, blocks_test_client, initialized_user):
         """Update block with custom commit message."""
         response = blocks_test_client.put(
             f"/users/{initialized_user}/blocks/student",
             json={
-                "content": 'name = "Dave"',
-                "format": "toml",
+                "content": "Dave is a developer.",
                 "message": "Custom commit message",
             },
         )
@@ -204,7 +199,7 @@ class TestBlockHistoryEndpoint:
         # Make another edit to have 2 versions
         blocks_test_client.put(
             f"/users/{initialized_user}/blocks/student",
-            json={"content": 'name = "Bob"', "format": "toml"},
+            json={"content": "Bob is a student now."},
         )
 
         response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student/history")
@@ -222,7 +217,7 @@ class TestBlockHistoryEndpoint:
         for i in range(5):
             blocks_test_client.put(
                 f"/users/{initialized_user}/blocks/student",
-                json={"content": f'name = "Version{i}"', "format": "toml"},
+                json={"content": f"Version {i} content."},
             )
 
         response = blocks_test_client.get(
@@ -248,7 +243,7 @@ class TestBlockVersionEndpoint:
         # Make an edit
         blocks_test_client.put(
             f"/users/{initialized_user}/blocks/student",
-            json={"content": 'name = "NewName"', "format": "toml"},
+            json={"content": "New content here."},
         )
 
         # Get the original version
@@ -258,8 +253,10 @@ class TestBlockVersionEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert 'name = "Alice"' in data["content"]
+        assert "Alice" in data["content"]
+        assert "Alice" in data["body"]
         assert data["sha"] == original_sha
+        assert "metadata" in data
 
     def test_get_version_not_found(self, blocks_test_client, initialized_user):
         """Get version returns 404 for nonexistent SHA."""
@@ -284,7 +281,7 @@ class TestRestoreBlockEndpoint:
         # Make an edit
         blocks_test_client.put(
             f"/users/{initialized_user}/blocks/student",
-            json={"content": 'name = "ChangedName"', "format": "toml"},
+            json={"content": "Changed content."},
         )
 
         # Restore original version
@@ -299,7 +296,7 @@ class TestRestoreBlockEndpoint:
 
         # Verify content restored
         get_response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
-        assert 'name = "Alice"' in get_response.json()["content_toml"]
+        assert "Alice" in get_response.json()["body"]
 
         # Verify history has 3 entries
         history_response = blocks_test_client.get(
@@ -324,7 +321,7 @@ class TestBlockDiffsEndpoints:
             block_label="student",
             field="name",
             operation="replace",
-            proposed_value='name = "Bob"',
+            proposed_value="Bob",
             reasoning="Test reasoning",
         )
 
@@ -347,8 +344,8 @@ class TestBlockDiffsEndpoints:
             agent_id="agent1",
             block_label="student",
             field=None,
-            operation="replace",
-            proposed_value='name = "ApprovedName"',
+            operation="full_replace",
+            proposed_value="Approved content here.",
             reasoning="Approval test",
         )
 
@@ -363,7 +360,7 @@ class TestBlockDiffsEndpoints:
 
         # Verify content changed
         get_response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
-        assert "ApprovedName" in get_response.json()["content_toml"]
+        assert "Approved content" in get_response.json()["body"]
 
     def test_approve_diff_not_found(self, blocks_test_client, initialized_user):
         """Approve diff returns 400 for nonexistent diff."""
@@ -384,8 +381,8 @@ class TestBlockDiffsEndpoints:
             agent_id="agent1",
             block_label="student",
             field=None,
-            operation="replace",
-            proposed_value='name = "RejectedName"',
+            operation="full_replace",
+            proposed_value="Rejected content.",
             reasoning="Rejection test",
         )
 
@@ -400,7 +397,7 @@ class TestBlockDiffsEndpoints:
 
         # Verify content unchanged
         get_response = blocks_test_client.get(f"/users/{initialized_user}/blocks/student")
-        assert 'name = "Alice"' in get_response.json()["content_toml"]
+        assert "Alice" in get_response.json()["body"]
 
     def test_reject_diff_with_reason(self, blocks_test_client, storage_manager, initialized_user):
         """Reject diff accepts optional reason."""
@@ -413,8 +410,8 @@ class TestBlockDiffsEndpoints:
             agent_id="agent1",
             block_label="student",
             field=None,
-            operation="replace",
-            proposed_value='name = "WrongName"',
+            operation="full_replace",
+            proposed_value="Wrong content.",
             reasoning="Test",
         )
 
@@ -441,7 +438,7 @@ class TestDiffCountsEndpoint:
             block_label="student",
             field="name",
             operation="replace",
-            proposed_value='name = "Bob"',
+            proposed_value="Bob",
             reasoning="First",
         )
         manager.propose_edit(
@@ -449,7 +446,7 @@ class TestDiffCountsEndpoint:
             block_label="student",
             field="background",
             operation="append",
-            proposed_value='background = "Senior"',
+            proposed_value="Senior",
             reasoning="Second",
         )
         manager.propose_edit(
@@ -457,7 +454,7 @@ class TestDiffCountsEndpoint:
             block_label="journey",
             field="progress",
             operation="append",
-            proposed_value='progress = "Module 2"',
+            proposed_value="Module 2",
             reasoning="Third",
         )
 

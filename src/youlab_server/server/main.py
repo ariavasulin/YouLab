@@ -6,6 +6,7 @@ from pathlib import Path
 
 import structlog
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from youlab_server.config.settings import ServiceSettings
@@ -17,6 +18,7 @@ from youlab_server.server.background import initialize_background
 from youlab_server.server.background import router as background_router
 from youlab_server.server.blocks import router as blocks_router
 from youlab_server.server.curriculum import router as curriculum_router
+from youlab_server.server.notes_adapter import router as notes_adapter_router
 from youlab_server.server.schemas import (
     AgentListResponse,
     AgentResponse,
@@ -134,6 +136,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configure CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:8080", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Include routers
 app.include_router(strategy_router, prefix="/strategy", tags=["strategy"])
 app.include_router(background_router)
@@ -141,6 +152,7 @@ app.include_router(curriculum_router)
 app.include_router(sync_router)
 app.include_router(users_router)
 app.include_router(blocks_router)
+app.include_router(notes_adapter_router, prefix="/api")
 
 
 def get_agent_manager() -> AgentManager:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from youlab_server.server.users import get_storage_manager
 from youlab_server.storage.blocks import UserBlockManager
-from youlab_server.storage.git import GitUserStorageManager
+from youlab_server.storage.git import GitUserStorageManager, parse_frontmatter
 
 log = structlog.get_logger()
 router = APIRouter(prefix="/users/{user_id}/blocks", tags=["blocks"])
@@ -43,17 +43,18 @@ class BlockDetail(BaseModel):
     """Detailed block information."""
 
     label: str
-    content_toml: str
-    content_markdown: str
+    content: str  # Full markdown with frontmatter
+    body: str  # Body only (for editor)
+    metadata: dict[str, Any]  # Parsed frontmatter
     pending_diffs: int
 
 
 class BlockUpdateRequest(BaseModel):
     """Request to update a block."""
 
-    content: str
-    format: str = "markdown"  # "markdown" or "toml"
+    content: str  # Markdown content (body or full)
     message: str | None = None
+    schema_ref: str | None = None  # Optional schema reference (renamed to avoid pydantic conflict)
 
 
 class BlockUpdateResponse(BaseModel):
@@ -90,6 +91,8 @@ class DiffSummary(BaseModel):
     confidence: str
     created_at: str
     agent_id: str
+    old_value: str | None = None
+    new_value: str | None = None
 
 
 class ApproveResponse(BaseModel):
@@ -135,17 +138,19 @@ async def get_block(
 ) -> BlockDetail:
     """Get a specific memory block."""
     manager = get_block_manager(user_id, storage)
-    toml_content = manager.get_block_toml(label)
-    if toml_content is None:
+    content = manager.get_block_markdown(label)
+    if content is None:
         raise HTTPException(status_code=404, detail=f"Block {label} not found")
 
-    markdown = manager.get_block_markdown(label) or ""
+    body = manager.get_block_body(label) or ""
+    metadata = manager.get_block_metadata(label) or {}
     counts = manager.count_pending_diffs()
 
     return BlockDetail(
         label=label,
-        content_toml=toml_content,
-        content_markdown=markdown,
+        content=content,
+        body=body,
+        metadata=metadata,
         pending_diffs=counts.get(label, 0),
     )
 
@@ -159,18 +164,12 @@ async def update_block(
 ) -> BlockUpdateResponse:
     """Update a memory block (user edit)."""
     manager = get_block_manager(user_id, storage)
-    if request.format == "markdown":
-        commit_sha = manager.update_block_from_markdown(
-            label=label,
-            markdown=request.content,
-            message=request.message,
-        )
-    else:
-        commit_sha = manager.update_block_from_toml(
-            label=label,
-            toml_content=request.content,
-            message=request.message,
-        )
+    commit_sha = manager.update_block(
+        label=label,
+        content=request.content,
+        message=request.message,
+        schema=request.schema_ref,
+    )
 
     return BlockUpdateResponse(commit_sha=commit_sha, label=label)
 
@@ -199,13 +198,22 @@ async def get_block_version(
     label: str,
     commit_sha: str,
     storage: StorageDep,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Get block content at a specific version."""
     manager = get_block_manager(user_id, storage)
     content = manager.get_version(label, commit_sha)
     if content is None:
         raise HTTPException(status_code=404, detail="Version not found")
-    return {"content": content, "sha": commit_sha}
+
+    # Parse frontmatter from historical content
+    metadata, body = parse_frontmatter(content)
+
+    return {
+        "content": content,
+        "body": body,
+        "metadata": metadata,
+        "sha": commit_sha,
+    }
 
 
 @router.post("/{label}/restore", response_model=BlockUpdateResponse)

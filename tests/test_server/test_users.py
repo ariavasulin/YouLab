@@ -230,7 +230,7 @@ class TestUserInitIntegration:
             user_dir = temp_storage_dir / "integration-test-user"
             assert user_dir.exists()
             assert (user_dir / ".git").exists()
-            assert (user_dir / "blocks").exists()
+            assert (user_dir / "memory-blocks").exists()
 
         finally:
             app.dependency_overrides.clear()
