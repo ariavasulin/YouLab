@@ -25,7 +25,7 @@ class PendingDiff:
     agent_id: str
     block_label: str
     field: str | None
-    operation: Literal["append", "replace", "llm_diff"]
+    operation: Literal["append", "replace", "llm_diff", "full_replace"]
     current_value: str
     proposed_value: str
     reasoning: str

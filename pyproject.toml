@@ -18,6 +18,7 @@ dependencies = [
     "honcho-ai>=1.0.0",
     "gitpython>=3.1.0",
     "tomli-w>=1.0.0",
+    "markdown>=3.5",
 ]
 
 [project.optional-dependencies]

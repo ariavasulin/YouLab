@@ -315,7 +315,7 @@ class FileSyncService:
         folders = self.letta.folders.list(name=name)
         for folder in folders:
             if folder.name == name:
-                if folder.id is None:
+                if folder.id is None:  # type: ignore[reportUnnecessaryComparison]
                     raise RuntimeError(f"Letta returned folder without ID: {name}")
                 self._folder_cache[name] = folder.id
                 # Ensure OpenWebUI Knowledge exists
@@ -327,7 +327,7 @@ class FileSyncService:
             name=name,
             embedding=self.settings.file_sync_embedding_model,
         )
-        if folder.id is None:
+        if folder.id is None:  # type: ignore[reportUnnecessaryComparison]
             raise RuntimeError(f"Letta returned new folder without ID: {name}")
         self._folder_cache[name] = folder.id
 
@@ -490,7 +490,7 @@ class FileSyncService:
                 letta_file_id: str | None = None
                 for f in files:
                     if filename in (f.file_name, f.original_file_name):
-                        if f.id is None:
+                        if f.id is None:  # type: ignore[reportUnnecessaryComparison]
                             raise RuntimeError(f"Letta returned file without ID: {filename}")
                         letta_file_id = f.id
                         break

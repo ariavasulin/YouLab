@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import tomllib
 from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from youlab_server.storage.convert import markdown_to_toml, toml_to_markdown
 from youlab_server.storage.diffs import PendingDiff, PendingDiffStore
 
 if TYPE_CHECKING:
@@ -23,8 +21,7 @@ class UserBlockManager:
     Manages memory blocks for a single user.
 
     Responsibilities:
-    - Read/write blocks from git storage
-    - Convert between TOML and Markdown
+    - Read/write blocks from git storage (markdown with YAML frontmatter)
     - Sync blocks to Letta agents
     - Manage pending diffs for agent edits
     """
@@ -53,17 +50,59 @@ class UserBlockManager:
         """List all block labels for this user."""
         return self.storage.list_blocks()
 
-    def get_block_toml(self, label: str) -> str | None:
-        """Get block content as TOML."""
+    def get_block_markdown(self, label: str) -> str | None:
+        """Get block content as full markdown (with frontmatter)."""
         return self.storage.read_block(label)
 
-    def get_block_markdown(self, label: str) -> str | None:
-        """Get block content as Markdown for editing."""
-        toml_content = self.storage.read_block(label)
-        if toml_content is None:
-            return None
-        return toml_to_markdown(toml_content, label)
+    def get_block_body(self, label: str) -> str | None:
+        """Get block body content (without frontmatter)."""
+        return self.storage.read_block_body(label)
 
+    def get_block_metadata(self, label: str) -> dict[str, Any] | None:
+        """Get block frontmatter metadata."""
+        return self.storage.read_block_metadata(label)
+
+    def update_block(
+        self,
+        label: str,
+        content: str,
+        message: str | None = None,
+        author: str = "user",
+        schema: str | None = None,
+        title: str | None = None,
+        sync_to_letta: bool = True,
+    ) -> str:
+        """
+        Update block from markdown content.
+
+        Args:
+            label: Block label
+            content: Markdown content (body only or with frontmatter)
+            message: Commit message
+            author: Who made the change
+            schema: Optional schema reference
+            title: Display title for the block
+            sync_to_letta: Whether to sync to Letta
+
+        Returns:
+            Commit SHA
+
+        """
+        commit_sha = self.storage.write_block(
+            label=label,
+            content=content,
+            message=message or f"Update {label}",
+            author=author,
+            schema=schema,
+            title=title,
+        )
+
+        if sync_to_letta and self.letta:
+            self._sync_block_to_letta(label)
+
+        return commit_sha
+
+    # Keep old method names as aliases for backward compatibility during transition
     def update_block_from_markdown(
         self,
         label: str,
@@ -71,52 +110,13 @@ class UserBlockManager:
         message: str | None = None,
         sync_to_letta: bool = True,
     ) -> str:
-        """
-        Update block from Markdown content (user edit).
-
-        Args:
-            label: Block label
-            markdown: Markdown content
-            message: Commit message
-            sync_to_letta: Whether to sync to Letta immediately
-
-        Returns:
-            Commit SHA
-
-        """
-        toml_content, _ = markdown_to_toml(markdown)
-        commit_sha = self.storage.write_block(
+        """Update block from markdown content (alias for update_block)."""
+        return self.update_block(
             label=label,
-            content=toml_content,
-            message=message or f"Update {label}",
-            author="user",
+            content=markdown,
+            message=message,
+            sync_to_letta=sync_to_letta,
         )
-
-        if sync_to_letta and self.letta:
-            self._sync_block_to_letta(label, toml_content)
-
-        return commit_sha
-
-    def update_block_from_toml(
-        self,
-        label: str,
-        toml_content: str,
-        message: str | None = None,
-        author: str = "user",
-        sync_to_letta: bool = True,
-    ) -> str:
-        """Update block from TOML content."""
-        commit_sha = self.storage.write_block(
-            label=label,
-            content=toml_content,
-            message=message or f"Update {label}",
-            author=author,
-        )
-
-        if sync_to_letta and self.letta:
-            self._sync_block_to_letta(label, toml_content)
-
-        return commit_sha
 
     # =========================================================================
     # Version History
@@ -150,9 +150,7 @@ class UserBlockManager:
         new_sha = self.storage.restore_block(label, commit_sha)
 
         if sync_to_letta and self.letta:
-            content = self.storage.read_block(label)
-            if content:
-                self._sync_block_to_letta(label, content)
+            self._sync_block_to_letta(label)
 
         return new_sha
 
@@ -160,24 +158,18 @@ class UserBlockManager:
     # Letta Sync
     # =========================================================================
 
-    def _sync_block_to_letta(self, label: str, toml_content: str) -> None:
+    def _sync_block_to_letta(self, label: str) -> None:
         """Sync block content to Letta."""
         if not self.letta:
             return
 
         block_name = self._letta_block_name(label)
 
-        # Parse TOML and convert to Letta memory string format
-        try:
-            data = tomllib.loads(toml_content)
-            memory_str = self._toml_to_memory_string(data)
-        except Exception as e:
-            self.logger.warning(
-                "toml_parse_failed",
-                label=label,
-                error=str(e),
-            )
-            memory_str = toml_content
+        # Get body content (without frontmatter)
+        body = self.storage.read_block_body(label)
+        if body is None:
+            self.logger.warning("sync_skipped_no_content", label=label)
+            return
 
         # Find or create block in Letta
         try:
@@ -191,15 +183,15 @@ class UserBlockManager:
                 # Update existing block
                 self.letta.blocks.update(
                     block_id=existing.id,
-                    value=memory_str,
+                    value=body,
                 )
                 self.logger.debug("letta_block_updated", label=label)
             else:
                 # Create new block
                 self.letta.blocks.create(
                     label=label,
-                    name=block_name,
-                    value=memory_str,
+                    name=block_name,  # type: ignore[call-arg]
+                    value=body,
                 )
                 self.logger.info("letta_block_created", label=label)
 
@@ -209,17 +201,6 @@ class UserBlockManager:
                 label=label,
                 error=str(e),
             )
-
-    def _toml_to_memory_string(self, data: dict[str, Any]) -> str:
-        """Convert TOML data to Letta memory string format."""
-        lines = []
-        for key, value in data.items():
-            if isinstance(value, list):
-                items = "\n".join(f"- {item}" for item in value)
-                lines.append(f"{key}:\n{items}")
-            elif value:
-                lines.append(f"{key}: {value}")
-        return "\n\n".join(lines)
 
     def get_or_create_letta_block_id(self, label: str) -> str | None:
         """Get or create a Letta block for this user/label."""
@@ -239,20 +220,14 @@ class UserBlockManager:
             return existing.id
 
         # Create from current content
-        content = self.storage.read_block(label)
-        if content is None:
+        body = self.storage.read_block_body(label)
+        if body is None:
             return None
-
-        try:
-            data = tomllib.loads(content)
-            memory_str = self._toml_to_memory_string(data)
-        except Exception:
-            memory_str = content
 
         block = self.letta.blocks.create(
             label=label,
-            name=block_name,
-            value=memory_str,
+            name=block_name,  # type: ignore[call-arg]
+            value=body,
         )
         return block.id
 
@@ -315,11 +290,30 @@ class UserBlockManager:
             msg = f"Diff {diff_id} is not pending (status: {diff.status})"
             raise ValueError(msg)
 
-        # Apply the edit
-        # For now, simple replace. TODO: handle append/llm_diff
-        commit_sha = self.update_block_from_toml(
+        # Get current block body
+        current_body = self.storage.read_block_body(diff.block_label) or ""
+
+        # Apply the edit based on operation type
+        if diff.operation == "append":
+            new_body = current_body.rstrip() + "\n\n" + diff.proposed_value
+        elif diff.operation == "replace":
+            if diff.current_value and diff.current_value in current_body:
+                new_body = current_body.replace(diff.current_value, diff.proposed_value, 1)
+            else:
+                msg = (
+                    f"Cannot apply diff {diff_id}: current_value not found in block. "
+                    "The block may have been modified since the diff was created."
+                )
+                raise ValueError(msg)
+        elif diff.operation == "full_replace":
+            new_body = diff.proposed_value
+        else:
+            msg = f"Unknown diff operation: {diff.operation}"
+            raise ValueError(msg)
+
+        commit_sha = self.update_block(
             label=diff.block_label,
-            toml_content=diff.proposed_value,
+            content=new_body,
             message=f"Apply agent suggestion: {diff.reasoning[:50]}",
             author=f"agent:{diff.agent_id}",
             sync_to_letta=True,
@@ -358,6 +352,8 @@ class UserBlockManager:
                 "confidence": d.confidence,
                 "created_at": d.created_at,
                 "agent_id": d.agent_id,
+                "oldValue": d.current_value,
+                "newValue": d.proposed_value,
             }
             for d in diffs
         ]
