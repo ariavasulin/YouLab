@@ -32,7 +32,9 @@ from ralph.api.blocks import router as blocks_router
 from ralph.api.notes_adapter import router as notes_router
 from ralph.config import get_settings
 from ralph.dolt import close_dolt_client, get_dolt_client
+from ralph.honcho import persist_message_fire_and_forget
 from ralph.memory import build_memory_context
+from ralph.tools import HonchoTools
 
 log = structlog.get_logger()
 
@@ -154,12 +156,16 @@ async def chat_stream(request: ChatRequest) -> EventSourceResponse:
             log.info("claude_md_not_found", workspace=str(workspace))
 
         # Build instructions
-        base_instructions = f"""You are a helpful coding assistant with access to a workspace.
+        base_instructions = f"""You are a helpful AI tutor assistant.
+Your workspace is: {workspace}
+You can read and write files, and execute shell commands within this workspace.
 
-Your workspace directory is: {workspace}
-All file operations and shell commands are automatically scoped to this directory.
-When listing files or running commands, they execute in your workspace.
-You can create, read, and edit files to help the user with their tasks."""
+You also have access to a `query_student` tool that lets you ask questions about
+the current student's learning history and context. Use this tool when you need
+to recall previous interactions, understand their learning style, or get context
+about what you've discussed before.
+
+Always be helpful, encouraging, and focused on the student's learning goals."""
 
         # Build memory context from Dolt
         memory_context = ""
@@ -205,6 +211,7 @@ The following information has been recorded about this student. Use this to pers
             tools=[
                 strip_agno_fields(ShellTools(base_dir=workspace)),
                 strip_agno_fields(FileTools(base_dir=workspace)),
+                strip_agno_fields(HonchoTools()),  # Add Honcho query tool
             ],
             instructions=instructions,
             markdown=True,
@@ -235,22 +242,54 @@ The following information has been recorded about this student. Use this to pers
 Now, the user says:
 {current_message}"""
 
+        # Persist user message to Honcho (fire-and-forget)
+        last_user_message = request.messages[-1].content if request.messages else ""
+        persist_message_fire_and_forget(
+            user_id=request.user_id,
+            chat_id=request.chat_id,
+            message=last_user_message,
+            is_user=True,
+        )
+
         try:
             yield {
                 "event": "message",
                 "data": json.dumps({"type": "status", "content": "Thinking..."}),
             }
 
-            # Stream the response
-            async for chunk in agent.arun(prompt, stream=True):
+            # Accumulate response for persistence
+            response_chunks: list[str] = []
+
+            # Stream the response (pass user context for HonchoTools)
+            async for chunk in agent.arun(
+                prompt,
+                stream=True,
+                user_id=request.user_id,
+                session_id=request.chat_id,
+                dependencies={
+                    "user_id": request.user_id,
+                    "chat_id": request.chat_id,
+                },
+            ):
                 content = chunk.content
                 if content:
+                    response_chunks.append(content)
                     yield {
                         "event": "message",
                         "data": json.dumps({"type": "message", "content": content}),
                     }
 
             yield {"event": "message", "data": json.dumps({"type": "done"})}
+
+            # Persist assistant response to Honcho (fire-and-forget)
+            full_response = "".join(response_chunks)
+            if full_response:
+                persist_message_fire_and_forget(
+                    user_id=request.user_id,
+                    chat_id=request.chat_id,
+                    message=full_response,
+                    is_user=False,
+                )
 
         except Exception as e:
             log.exception("chat_stream_error", error=str(e))
