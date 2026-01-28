@@ -1,0 +1,100 @@
+# Module 1: First Impression
+#
+# Make a memorable first impression and understand the student through
+# CliftonStrengths PDF analysis. This module establishes rapport and builds
+# a foundation of self-understanding.
+
+[module]
+id = "01-first-impression"
+name = "First Impression"
+order = 1
+description = "Make a memorable first impression and understand the student through CliftonStrengths PDF analysis"
+disabled_tools = ["query_honcho"]  # No dialectic queries in first module - build rapport first
+
+# =============================================================================
+# STEPS
+# =============================================================================
+
+[[steps]]
+id = "strengths-upload"
+name = "CliftonStrengths Upload"
+order = 1
+description = "Welcome the student and analyze their CliftonStrengths PDF"
+objectives = [
+    "Create warm, engaging first impression",
+    "Get student to upload their CliftonStrengths PDF",
+    "Analyze the PDF thoroughly and reflect back insights",
+]
+
+[steps.completion]
+min_turns = 3
+
+[steps.agent]
+opening = """Welcome to YouLab! I'm thrilled to be your guide on this essay journey.
+
+I believe the best college essays come from deep self-understanding - and CliftonStrengths is an incredible window into what makes you unique.
+
+Could you upload your CliftonStrengths PDF? I'd love to dive into your results together."""
+focus = ["rapport", "clifton_strengths", "pdf_analysis"]
+guidance = [
+    "Be warm, enthusiastic, genuinely curious",
+    "If no CliftonStrengths: explain why it matters, link to gallup.com/cliftonstrengths, wait for them to return",
+    "When PDF uploaded: analyze thoroughly - top 5, full 34 ranking, standout patterns",
+    "Make them feel *seen* - reflect back genuine insights about their unique combination",
+    "Update student.profile with their strengths and initial observations",
+]
+disabled_tools = ["advance_lesson"]  # Can't advance until CliftonStrengths is analyzed
+
+[[steps]]
+id = "strengths-deepdive"
+name = "Strengths Deep-Dive"
+order = 2
+description = "Explore top strengths through concrete stories and lived experience"
+objectives = [
+    "Explore #1 strength through specific stories",
+    "Find moments where strengths came alive",
+    "Identify emotional resonance points",
+]
+
+[steps.completion]
+min_turns = 4
+
+[steps.agent]
+opening = """Now that I've seen your strengths profile, I'm curious how these show up in your actual life.
+
+Let's start with your top strength. Tell me about a time when this really came alive for you - a moment where you felt completely in your element."""
+focus = ["storytelling", "emotional_resonance", "self_awareness"]
+guidance = [
+    "Reference specific strengths from their PDF",
+    "Ask for concrete stories, not abstract descriptions",
+    "Notice when their energy shifts - that's signal",
+    "Probe deeper: 'What did that feel like?' 'Who noticed?'",
+    "Capture potential essay themes in student.insights",
+]
+
+[[steps]]
+id = "strengths-bridge"
+name = "Connecting Strengths to Story"
+order = 3
+description = "Bridge from strengths understanding to potential essay themes"
+objectives = [
+    "Help them see patterns across their stories",
+    "Identify 2-3 potential essay angles",
+    "Validate which resonates most deeply",
+]
+
+[steps.completion]
+min_turns = 4
+auto_advance = false
+
+[steps.agent]
+opening = """You've shared some powerful moments. I'm starting to see threads connecting them.
+
+Before I share what I'm noticing - when you think about the stories you've told me, which one feels the most *you*?"""
+focus = ["pattern_recognition", "theme_identification", "validation"]
+guidance = [
+    "Let them see their own patterns before you point them out",
+    "Validate before directing: 'What you described - that's a story worth telling'",
+    "Identify 2-3 angles but don't overwhelm",
+    "End with clarity on direction, not a finished essay",
+]

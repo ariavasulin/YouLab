@@ -41,7 +41,9 @@ class QueryHonchoTool(_get_base_class()):
     """
 
     name: ClassVar[str] = "query_honcho"
-    description: ClassVar[str] = """Query for insights about the current student based on their conversation history.
+    description: ClassVar[
+        str
+    ] = """Query for insights about the current student based on their conversation history.
 
     Args:
         question: Natural language question about the student.

@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from youlab_server.server.users import get_storage_manager
 from youlab_server.storage.blocks import UserBlockManager
@@ -93,6 +93,26 @@ class DiffSummary(BaseModel):
     agent_id: str
     old_value: str | None = None
     new_value: str | None = None
+
+
+class ProposeEditRequest(BaseModel):
+    """Request body for proposing a memory block edit (from sandboxed tools)."""
+
+    agent_id: str = Field(..., description="Agent proposing the edit")
+    field: str | None = Field(default=None, description="Specific field to edit")
+    content: str = Field(..., description="Proposed new content")
+    strategy: str = Field(
+        default="append", description="Merge strategy: append, replace, full_replace"
+    )
+    reasoning: str = Field(default="", description="Why agent wants this change")
+
+
+class ProposeEditResponse(BaseModel):
+    """Response from propose edit."""
+
+    diff_id: str | None = Field(description="ID of created pending diff")
+    success: bool = Field(default=True)
+    error: str | None = Field(default=None)
 
 
 class ApproveResponse(BaseModel):
@@ -277,3 +297,64 @@ async def reject_diff(
     manager = get_block_manager(user_id, storage)
     manager.reject_diff(diff_id, reason)
     return {"status": "rejected", "diff_id": diff_id}
+
+
+# =============================================================================
+# Propose Edit Endpoint (for sandboxed tools)
+# =============================================================================
+
+
+@router.post("/{label}/propose", response_model=ProposeEditResponse)
+async def propose_block_edit(
+    user_id: str,
+    label: str,
+    request: ProposeEditRequest,
+    storage: StorageDep,
+) -> ProposeEditResponse:
+    """
+    Propose an edit to a memory block.
+
+    Called by sandboxed Letta tools that can't access UserBlockManager directly.
+    Creates a PendingDiff for user approval.
+    """
+    user_storage = storage.get(user_id)
+    if not user_storage.exists:
+        return ProposeEditResponse(
+            diff_id=None,
+            success=False,
+            error=f"User {user_id} not found",
+        )
+
+    manager = UserBlockManager(user_id, user_storage)
+
+    # Map strategy to operation
+    operation = "append" if request.strategy == "append" else "replace"
+    if request.strategy == "full_replace":
+        operation = "full_replace"
+
+    try:
+        diff = manager.propose_edit(
+            agent_id=request.agent_id,
+            block_label=label,
+            field=request.field,
+            operation=operation,
+            proposed_value=request.content,
+            reasoning=request.reasoning or "No reasoning provided",
+            confidence="medium",  # Default for background agents
+        )
+
+        log.info(
+            "block_edit_proposed_via_http",
+            user_id=user_id,
+            block=label,
+            diff_id=diff.id,
+        )
+
+        return ProposeEditResponse(diff_id=diff.id, success=True)
+    except Exception as e:
+        log.error("block_propose_failed", error=str(e), user_id=user_id, block=label)
+        return ProposeEditResponse(
+            diff_id=None,
+            success=False,
+            error=str(e),
+        )

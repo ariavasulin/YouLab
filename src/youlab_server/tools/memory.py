@@ -4,6 +4,9 @@ Memory block editing tool for Letta agents.
 This module provides the edit_memory_block tool that agents use to propose
 changes to user memory blocks. Changes create pending diffs that require
 user approval before being applied.
+
+Note (ARI-85): This tool fails when used by background agents in Letta sandbox.
+The sandbox doesn't have access to youlab_server imports.
 """
 
 from __future__ import annotations
