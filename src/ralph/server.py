@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -28,13 +29,16 @@ if TYPE_CHECKING:
 
 from pathlib import Path
 
+from ralph.api.background import router as background_router
 from ralph.api.blocks import router as blocks_router
 from ralph.api.notes_adapter import router as notes_router
+from ralph.background import BackgroundExecutor, get_registry
+from ralph.background.scheduler import get_scheduler, stop_scheduler
 from ralph.config import get_settings
 from ralph.dolt import close_dolt_client, get_dolt_client
 from ralph.honcho import persist_message_fire_and_forget
 from ralph.memory import build_memory_context
-from ralph.tools import HonchoTools
+from ralph.tools import HonchoTools, MemoryBlockTools
 
 log = structlog.get_logger()
 
@@ -91,16 +95,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("ralph_server_starting", model=settings.openrouter_model)
 
     # Initialize Dolt connection pool
+    dolt = None
     try:
-        await get_dolt_client()
+        dolt = await get_dolt_client()
         log.info("dolt_client_connected")
     except Exception as e:
         log.warning("dolt_client_connection_failed", error=str(e))
         # Continue without Dolt - blocks API will fail but chat will work
 
+    # Initialize background task system
+    if dolt:
+        try:
+            registry = get_registry()
+            await registry.initialize(dolt)
+
+            executor = BackgroundExecutor(dolt)
+            scheduler = await get_scheduler(registry, executor, dolt)
+            await scheduler.start()
+            log.info("background_scheduler_started")
+        except Exception as e:
+            log.warning("background_scheduler_failed", error=str(e))
+
     yield
 
-    # Close Dolt connection pool
+    # Shutdown
+    await stop_scheduler()
+    log.info("background_scheduler_stopped")
+
     await close_dolt_client()
     log.info("dolt_client_disconnected")
     log.info("ralph_server_stopped")
@@ -124,6 +145,9 @@ app.add_middleware(
 
 # Include the blocks API router
 app.include_router(blocks_router)
+
+# Include the background tasks API router
+app.include_router(background_router)
 
 # Include the notes adapter at /api prefix for OpenWebUI compatibility
 # OpenWebUI calls /api/you/notes/* endpoints
@@ -164,6 +188,20 @@ You also have access to a `query_student` tool that lets you ask questions about
 the current student's learning history and context. Use this tool when you need
 to recall previous interactions, understand their learning style, or get context
 about what you've discussed before.
+
+## Memory Blocks
+
+You have access to memory blocks that contain persistent information about the student.
+These blocks are shown below in "Student Context" when available.
+
+To update memory blocks, use the memory block tools:
+1. First, use `read_memory_block` to see the exact current content
+2. Then, use `propose_memory_edit` with exact string matching to suggest changes
+3. Your edits will be submitted as proposals that require user approval
+
+Important: The `old_string` in your edit must match the block content exactly,
+including whitespace and newlines. If the string appears multiple times,
+provide more surrounding context to make it unique, or use `replace_all=True`.
 
 Always be helpful, encouraging, and focused on the student's learning goals."""
 
@@ -211,7 +249,8 @@ The following information has been recorded about this student. Use this to pers
             tools=[
                 strip_agno_fields(ShellTools(base_dir=workspace)),
                 strip_agno_fields(FileTools(base_dir=workspace)),
-                strip_agno_fields(HonchoTools()),  # Add Honcho query tool
+                strip_agno_fields(HonchoTools()),  # Honcho query tool
+                strip_agno_fields(MemoryBlockTools()),  # Memory block tools
             ],
             instructions=instructions,
             markdown=True,
@@ -289,6 +328,15 @@ Now, the user says:
                     chat_id=request.chat_id,
                     message=full_response,
                     is_user=False,
+                )
+
+            # Track user activity for idle triggers
+            try:
+                dolt_client = await get_dolt_client()
+                await dolt_client.update_user_activity(request.user_id, datetime.now(UTC))
+            except Exception as activity_err:
+                log.warning(
+                    "activity_tracking_failed", user_id=request.user_id, error=str(activity_err)
                 )
 
         except Exception as e:

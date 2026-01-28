@@ -7,7 +7,7 @@ import concurrent.futures
 import logging
 from typing import Any
 
-from agno.run import RunContext
+from agno.run import RunContext  # noqa: TC002 - must be available at runtime for Agno
 from agno.tools import Toolkit
 
 from ralph.honcho import get_honcho
@@ -76,8 +76,10 @@ class HonchoTools(Toolkit):
                 result = asyncio.run(honcho.query_dialectic(user_id, question))
 
             if result is None:
+                logger.debug("Dialectic returned None for user %s", user_id)
                 return "No insights available for this student yet."
 
+            logger.debug("Dialectic response for user %s: %s", user_id, result.insight[:200] if len(result.insight) > 200 else result.insight)
             return result.insight
 
         except Exception as e:
