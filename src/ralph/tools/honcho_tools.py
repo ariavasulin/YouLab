@@ -14,6 +14,8 @@ from ralph.honcho import get_honcho
 
 logger = logging.getLogger(__name__)
 
+_LOG_PREVIEW_LENGTH = 200
+
 
 class HonchoTools(Toolkit):
     """
@@ -79,7 +81,8 @@ class HonchoTools(Toolkit):
                 logger.debug("Dialectic returned None for user %s", user_id)
                 return "No insights available for this student yet."
 
-            logger.debug("Dialectic response for user %s: %s", user_id, result.insight[:200] if len(result.insight) > 200 else result.insight)
+            preview = result.insight[:_LOG_PREVIEW_LENGTH] if len(result.insight) > _LOG_PREVIEW_LENGTH else result.insight
+            logger.debug("Dialectic response for user %s: %s", user_id, preview)
             return result.insight
 
         except Exception as e:

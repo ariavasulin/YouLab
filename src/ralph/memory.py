@@ -8,19 +8,28 @@ if TYPE_CHECKING:
     from ralph.dolt import DoltClient
 
 
-async def build_memory_context(dolt: DoltClient, user_id: str) -> str:
+async def build_memory_context(
+    dolt: DoltClient,
+    user_id: str,
+    labels: list[str] | None = None,
+) -> str:
     """
     Build memory context string for agent instructions.
 
     Args:
         dolt: DoltClient instance for database access
         user_id: The user ID to fetch memory blocks for
+        labels: Optional list of block labels to include (None = all)
 
     Returns:
-        A formatted markdown string with all memory blocks, or empty string if none.
+        A formatted markdown string with memory blocks, or empty string if none.
 
     """
     blocks = await dolt.list_blocks(user_id)
+
+    # Filter by labels if specified
+    if labels:
+        blocks = [b for b in blocks if b.label in labels]
 
     if not blocks:
         return ""
