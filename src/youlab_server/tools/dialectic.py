@@ -1,4 +1,9 @@
-"""Honcho dialectic query tool for Letta agents."""
+"""
+Honcho dialectic query tool for Letta agents.
+
+Note (ARI-85): This tool fails when used by background agents in Letta sandbox.
+The sandbox doesn't have access to youlab_server imports.
+"""
 
 from __future__ import annotations
 

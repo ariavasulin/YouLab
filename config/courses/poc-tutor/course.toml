@@ -1,0 +1,113 @@
+# =============================================================================
+# POC TUTOR COURSE - ARI-85
+# Testing background agent integration with UserBlockManager
+# =============================================================================
+
+[agent]
+id = "poc-tutor"
+name = "CS-189 Tutor"
+version = "0.1.0"
+description = "CS-189 Introduction to Machine Learning tutor"
+modules = ["cs-189"]
+model = "openai/gpt-4o"
+embedding = "openai/text-embedding-3-small"
+context_window = 128000
+max_response_tokens = 4096
+system = """You are a tutor for CS-189: Introduction to Machine Learning at UC Berkeley.
+
+Your memory blocks:
+- `student`: Background, strengths, and challenges for this student
+- `course_syllabus`: Course topics and learning objectives
+- `operating_manual`: How to work with this student effectively
+- `progress`: Student's progress through the course
+
+Read these blocks at the start of each session. Update them when you learn something significant.
+
+Help students understand machine learning concepts, work through problem sets, and prepare for exams.
+"""
+
+tools = ["send_message", "edit_memory_block"]
+
+# =============================================================================
+# MEMORY BLOCKS - All using label="human" for simplicity
+# =============================================================================
+
+[block.course_syllabus]
+label = "human"
+shared = false
+description = "Course syllabus and learning objectives"
+field.overview = { type = "string", default = "CS-189: Introduction to Machine Learning covers supervised and unsupervised learning, including regression, classification, clustering, dimensionality reduction, and neural networks.", description = "High-level course description" }
+field.objectives = { type = "list", default = ["Understand core ML algorithms", "Apply mathematical foundations", "Implement models from scratch", "Evaluate model performance"], max = 10, description = "Learning objectives" }
+
+[block.operating_manual]
+label = "human"
+shared = false
+description = "How to work effectively with this student"
+field.effective_strategies = { type = "string", default = "", description = "What works well with this student" }
+field.things_to_avoid = { type = "string", default = "", description = "What doesn't work or should be avoided" }
+
+[block.progress]
+label = "human"
+shared = false
+description = "Student progress tracking"
+field.current_status = { type = "string", default = "Just getting started", description = "Where the student is now" }
+field.completed_items = { type = "list", default = [], max = 20, description = "Completed milestones" }
+field.notes = { type = "string", default = "", description = "Observations about progress" }
+
+[block.student]
+label = "human"
+shared = false
+description = "Information about this student"
+field.profile = { type = "string", default = "", description = "Background, interests, and learning goals" }
+field.strengths = { type = "string", default = "", description = "Student's strengths and prior knowledge" }
+field.challenges = { type = "string", default = "", description = "Areas where student needs more support" }
+
+# =============================================================================
+# BACKGROUND TASKS
+# =============================================================================
+
+# NOTE: on_idle trigger is NOT IMPLEMENTED. This task will only run when manually triggered.
+# TODO(ARI-85): Implement idle trigger scheduler - see src/youlab_server/background/runner.py
+[[task]]
+name = "poc-progress-tracker"
+on_idle = true
+idle_threshold_minutes = 1  # Would run 1 minute after last message IF implemented
+idle_cooldown_minutes = 5   # Would wait 5 minutes between runs IF implemented
+manual = true  # Can be manually triggered (this DOES work)
+agent_types = ["poc-tutor"]
+user_filter = "all"
+batch_size = 10
+
+# Agent-based execution (preferred approach)
+# The runner creates a Letta agent that can reason about what to query and update
+system = """You are a background agent that reviews conversation history and updates memory blocks.
+
+Your job:
+1. Query conversation history to understand recent student progress
+2. Update the progress and operating_manual blocks with insights
+3. Be concise - only add meaningful observations
+
+Available memory blocks you can update:
+- progress: Track student progress and notes (fields: current_status, completed_items, notes)
+- operating_manual: Effective strategies and things to avoid (fields: effective_strategies, things_to_avoid)
+
+Use query_honcho to analyze the conversation, then use edit_memory_block to propose updates.
+Focus on actionable insights that will help future tutoring sessions."""
+
+tools = ["query_honcho", "edit_memory_block"]
+
+# DEPRECATED: queries-based execution (kept for backwards compatibility)
+# When system + tools are provided, agent-based execution is used instead
+# queries = [
+#     { target = "progress.notes", question = "What progress has the student made?", scope = "recent", recent_limit = 10, merge = "append" },
+#     { target = "operating_manual.effective_strategies", question = "What tutoring strategies work well?", scope = "recent", recent_limit = 10, merge = "append" }
+# ]
+
+# =============================================================================
+# UI MESSAGES
+# =============================================================================
+
+[messages]
+welcome_first = "Hello! I'm your CS-189 tutor. What would you like to work on today - homework, concepts, or exam prep?"
+welcome_returning = "Welcome back! Ready to continue with CS-189?"
+error_unavailable = "Having a moment - try again shortly."

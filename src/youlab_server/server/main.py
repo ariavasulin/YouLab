@@ -18,6 +18,8 @@ from youlab_server.server.background import initialize_background
 from youlab_server.server.background import router as background_router
 from youlab_server.server.blocks import router as blocks_router
 from youlab_server.server.curriculum import router as curriculum_router
+from youlab_server.server.honcho import get_honcho_client as honcho_get_client
+from youlab_server.server.honcho import router as honcho_router
 from youlab_server.server.notes_adapter import router as notes_adapter_router
 from youlab_server.server.schemas import (
     AgentListResponse,
@@ -36,8 +38,10 @@ from youlab_server.server.users import router as users_router
 from youlab_server.server.users import set_storage_manager
 from youlab_server.storage.git import GitUserStorageManager
 from youlab_server.tools.curriculum import advance_lesson
-from youlab_server.tools.dialectic import query_honcho, set_honcho_client, set_user_context
-from youlab_server.tools.memory import edit_memory_block, set_letta_client
+from youlab_server.tools.dialectic import set_honcho_client, set_user_context
+from youlab_server.tools.memory import set_letta_client
+from youlab_server.tools.sandbox import edit_memory_block as sandbox_edit_memory_block
+from youlab_server.tools.sandbox import query_honcho as sandbox_query_honcho
 
 log = structlog.get_logger()
 settings = ServiceSettings()
@@ -69,6 +73,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.honcho_client = None
         log.info("honcho_disabled")
 
+    # Override honcho router's dependency to use our client
+    app.dependency_overrides[honcho_get_client] = get_honcho_client
+
     # Rebuild cache from Letta
     try:
         count = await app.state.agent_manager.rebuild_cache()
@@ -82,14 +89,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         set_honcho_client(app.state.honcho_client)
     log.info("tool_globals_initialized")
 
-    # Register custom tools with Letta
+    # Register custom tools with Letta (sandbox-compatible versions)
     try:
         client = app.state.agent_manager.client
-        client.tools.upsert_from_function(func=query_honcho)
-        client.tools.upsert_from_function(func=edit_memory_block)
+
+        # Unregister old tools if they exist (prevent conflicts)
+        import contextlib
+
+        for tool_name in ["query_honcho", "edit_memory_block"]:
+            with contextlib.suppress(Exception):
+                client.tools.delete(name=tool_name)
+
+        # Register sandbox-compatible versions (use HTTP calls, work in Docker sandbox)
+        client.tools.upsert_from_function(func=sandbox_query_honcho)
+        client.tools.upsert_from_function(func=sandbox_edit_memory_block)
+
+        # advance_lesson stays as-is for now (future work to convert to sandbox)
         client.tools.upsert_from_function(func=advance_lesson)
+
         log.info(
-            "custom_tools_registered", tools=["query_honcho", "edit_memory_block", "advance_lesson"]
+            "sandbox_tools_registered",
+            tools=["query_honcho", "edit_memory_block", "advance_lesson"],
         )
     except Exception as e:
         log.warning("custom_tools_registration_failed", error=str(e))
@@ -104,6 +124,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         letta_client=app.state.agent_manager.client,
         honcho_client=app.state.honcho_client,
         config_dir=Path("config/courses"),
+        storage_manager=storage_manager,
     )
 
     # Initialize file sync service (if enabled)
@@ -152,6 +173,7 @@ app.include_router(curriculum_router)
 app.include_router(sync_router)
 app.include_router(users_router)
 app.include_router(blocks_router)
+app.include_router(honcho_router)
 app.include_router(notes_adapter_router, prefix="/api")
 
 

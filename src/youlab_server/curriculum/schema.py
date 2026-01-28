@@ -113,7 +113,7 @@ class Triggers(BaseModel):
 
     schedule: str | None = None
     manual: bool = True
-    after_messages: int | None = None
+    after_messages: int | None = None  # Note (ARI-85): not implemented in runner
     idle: IdleTrigger = Field(default_factory=IdleTrigger)
 
 
@@ -169,7 +169,10 @@ class QueryConfig(BaseModel):
 class TaskConfig(BaseModel):
     """Background task configuration (v2 format)."""
 
-    # Scheduling
+    # Identity
+    name: str = ""  # Task name for lookup (e.g., "poc-progress-tracker")
+
+    # Scheduling (Note: on_idle trigger not implemented - ARI-85)
     schedule: str | None = None
     manual: bool = True
     on_idle: bool = False
@@ -181,10 +184,12 @@ class TaskConfig(BaseModel):
     user_filter: str = "all"
     batch_size: int = 50
 
-    # Simple queries (optional)
+    # Simple queries (optional - DEPRECATED in favor of agent-based execution)
     queries: list[QueryConfig] = Field(default_factory=list)
 
-    # Full agent capabilities (optional)
+    # Full agent capabilities (optional - preferred approach)
+    # When system + tools are provided, the runner creates a Letta agent
+    # that can reason about what to query and what to update
     system: str | None = None
     tools: list[str] = Field(default_factory=list)
 

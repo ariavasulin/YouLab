@@ -6,14 +6,31 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, cast
 
-import structlog
-
 if TYPE_CHECKING:
+    from typing import Any
+
     from honcho import Honcho
 
 from ralph.config import settings
 
-log = structlog.get_logger()
+# Optional structlog - fall back to print for OpenWebUI environment
+try:
+    import structlog
+
+    log = structlog.get_logger()
+except ImportError:
+
+    class _PrintLogger:
+        def info(self, msg: str, **kwargs: Any) -> None:
+            print(f"[INFO] {msg}: {kwargs}")
+
+        def error(self, msg: str, **kwargs: Any) -> None:
+            print(f"[ERROR] {msg}: {kwargs}")
+
+        def warning(self, msg: str, **kwargs: Any) -> None:
+            print(f"[WARNING] {msg}: {kwargs}")
+
+    log = _PrintLogger()  # type: ignore[assignment]
 
 
 @dataclass
@@ -86,15 +103,11 @@ class HonchoClient:
             metadata: dict[str, object] = {"chat_id": chat_id, "user_id": user_id}
             session.add_messages([peer.message(message, metadata=metadata)])
 
-            log.debug(
-                "message_persisted", user_id=user_id, chat_id=chat_id, is_user=is_user
-            )
+            log.debug("message_persisted", user_id=user_id, chat_id=chat_id, is_user=is_user)
         except Exception as e:
             log.warning("persist_failed", error=str(e), user_id=user_id)
 
-    async def query_dialectic(
-        self, user_id: str, question: str
-    ) -> DialecticResponse | None:
+    async def query_dialectic(self, user_id: str, question: str) -> DialecticResponse | None:
         """Query Honcho for insights about a student."""
         if self.client is None:
             return None

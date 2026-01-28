@@ -352,8 +352,8 @@ class UserBlockManager:
                 "confidence": d.confidence,
                 "created_at": d.created_at,
                 "agent_id": d.agent_id,
-                "oldValue": d.current_value,
-                "newValue": d.proposed_value,
+                "old_value": d.current_value,
+                "new_value": d.proposed_value,
             }
             for d in diffs
         ]
