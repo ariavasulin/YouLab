@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+# Find .env relative to this file (project root)
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_ENV_FILE = _PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -44,7 +49,7 @@ class Settings(BaseSettings):
         """SQLAlchemy async connection URL for Dolt."""
         return f"mysql+aiomysql://{self.dolt_user}:{self.dolt_password}@{self.dolt_host}:{self.dolt_port}/{self.dolt_database}"
 
-    model_config = {"env_prefix": "RALPH_"}
+    model_config = {"env_prefix": "RALPH_", "env_file": _ENV_FILE}
 
 
 @lru_cache
