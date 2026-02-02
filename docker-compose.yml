@@ -1,0 +1,15 @@
+services:
+  dolt:
+    image: dolthub/dolt-sql-server:latest
+    ports:
+      - "3307:3306"  # Avoid conflict with local MySQL
+    volumes:
+      - dolt-data:/var/lib/dolt
+      - ./config/dolt/config.yaml:/etc/dolt/servercfg.d/config.yaml:ro
+      - ./config/dolt/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      DOLT_ROOT_PASSWORD: ${DOLT_ROOT_PASSWORD:-devpassword}
+      DOLT_ROOT_HOST: "%"
+
+volumes:
+  dolt-data:

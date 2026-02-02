@@ -1,7 +1,8 @@
 """
-title: YouLab Tutor.
+CS-189 Tutor pipe for OpenWebUI.
 
-description: College essay coaching tutor with persistent memory
+title: CS-189 Tutor
+description: CS-189 Introduction to Machine Learning tutor
 version: 0.1.0
 """
 
@@ -26,7 +27,7 @@ class Pipe:
             description="URL of the YouLab Server HTTP service",
         )
         AGENT_TYPE: str = Field(
-            default="college-essay",
+            default="poc-tutor",
             description="Agent type to use (course_id)",
         )
         ENABLE_LOGGING: bool = Field(
@@ -39,7 +40,7 @@ class Pipe:
         )
 
     def __init__(self) -> None:
-        self.name = "YouLab Tutor"
+        self.name = "CS-189 Tutor"
         self.valves = self.Valves()
 
     async def on_startup(self) -> None:

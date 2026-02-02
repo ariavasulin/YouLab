@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
+import yaml
 from git import Repo
 from git.exc import InvalidGitRepositoryError
 
@@ -15,6 +17,52 @@ if TYPE_CHECKING:
     from git import Commit
 
 log = structlog.get_logger()
+
+# Frontmatter regex pattern
+FRONTMATTER_PATTERN = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
+
+
+def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
+    """
+    Parse YAML frontmatter from markdown content.
+
+    Returns:
+        Tuple of (frontmatter_dict, body_content)
+
+    """
+    match = FRONTMATTER_PATTERN.match(content)
+    if not match:
+        return {}, content
+
+    frontmatter_str = match.group(1)
+    body = content[match.end() :]
+
+    try:
+        frontmatter = yaml.safe_load(frontmatter_str) or {}
+    except yaml.YAMLError:
+        frontmatter = {}
+
+    return frontmatter, body.lstrip("\n")
+
+
+def format_frontmatter(metadata: dict[str, Any], body: str) -> str:
+    """
+    Format metadata and body into markdown with YAML frontmatter.
+
+    Args:
+        metadata: Dict with block, schema (optional), updated_at
+        body: Markdown body content
+
+    Returns:
+        Complete markdown string with frontmatter
+
+    """
+    # Ensure updated_at is set
+    if "updated_at" not in metadata:
+        metadata["updated_at"] = datetime.now(UTC).isoformat()
+
+    frontmatter = yaml.dump(metadata, default_flow_style=False, sort_keys=False)
+    return f"---\n{frontmatter}---\n\n{body}"
 
 
 @dataclass
@@ -45,16 +93,17 @@ class GitUserStorage:
     Directory structure:
         .data/users/{user_id}/
             .git/
-            blocks/
-                student.toml
-                engagement_strategy.toml
-                journey.toml
+            memory-blocks/
+                student.md
+                engagement_strategy.md
+                journey.md
             pending_diffs/
                 {diff_id}.json
             agent_threads/
                 {agent_name}/
                     {chat_id}.json
 
+    Memory blocks are stored as markdown files with YAML frontmatter.
     Each edit creates a git commit for full version history.
     """
 
@@ -70,10 +119,15 @@ class GitUserStorage:
         self.user_id = user_id
         self.base_dir = Path(base_dir)
         self.user_dir = self.base_dir / user_id
-        self.blocks_dir = self.user_dir / "blocks"
+        self.memory_blocks_dir = self.user_dir / "memory-blocks"
         self.diffs_dir = self.user_dir / "pending_diffs"
         self._repo: Repo | None = None
         self.logger = log.bind(user_id=user_id, component="git_storage")
+
+    @property
+    def blocks_dir(self) -> Path:
+        """Alias for memory_blocks_dir (deprecated)."""
+        return self.memory_blocks_dir
 
     @property
     def repo(self) -> Repo:
@@ -97,7 +151,7 @@ class GitUserStorage:
             return
 
         # Create directories
-        self.blocks_dir.mkdir(parents=True, exist_ok=True)
+        self.memory_blocks_dir.mkdir(parents=True, exist_ok=True)
         self.diffs_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize git repo
@@ -129,13 +183,47 @@ class GitUserStorage:
             label: Block label (e.g., "student", "journey")
 
         Returns:
-            File content or None if not found
+            Full markdown content (with frontmatter) or None if not found
 
         """
-        path = self.blocks_dir / f"{label}.toml"
+        path = self.memory_blocks_dir / f"{label}.md"
         if not path.exists():
             return None
         return path.read_text()
+
+    def read_block_body(self, label: str) -> str | None:
+        """
+        Read just the body content of a memory block (no frontmatter).
+
+        Args:
+            label: Block label
+
+        Returns:
+            Body content or None if not found
+
+        """
+        content = self.read_block(label)
+        if content is None:
+            return None
+        _, body = parse_frontmatter(content)
+        return body
+
+    def read_block_metadata(self, label: str) -> dict[str, Any] | None:
+        """
+        Read frontmatter metadata from a memory block.
+
+        Args:
+            label: Block label
+
+        Returns:
+            Frontmatter dict or None if not found
+
+        """
+        content = self.read_block(label)
+        if content is None:
+            return None
+        metadata, _ = parse_frontmatter(content)
+        return metadata
 
     def write_block(
         self,
@@ -143,25 +231,52 @@ class GitUserStorage:
         content: str,
         message: str | None = None,
         author: str = "user",
+        schema: str | None = None,
+        title: str | None = None,
     ) -> str:
         """
         Write a memory block and commit.
 
         Args:
             label: Block label
-            content: TOML content
+            content: Markdown content (with or without frontmatter)
             message: Commit message (auto-generated if None)
             author: Who made the change ("user", "system", or agent name)
+            schema: Optional schema reference (e.g., "college-essay/student")
+            title: Display title for the block (stored in frontmatter)
 
         Returns:
             Commit SHA
 
         """
-        # Ensure blocks directory exists
-        self.blocks_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure memory_blocks directory exists
+        self.memory_blocks_dir.mkdir(parents=True, exist_ok=True)
 
-        path = self.blocks_dir / f"{label}.toml"
-        path.write_text(content)
+        # Parse existing frontmatter if present, or create new
+        existing_meta, body = parse_frontmatter(content)
+
+        # Build metadata
+        metadata: dict[str, Any] = {
+            "block": label,
+            **existing_meta,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+        if schema:
+            metadata["schema"] = schema
+        if title:
+            metadata["title"] = title
+        elif "title" not in metadata:
+            # Generate default title from label
+            metadata["title"] = label.replace("_", " ").title()
+
+        # If content had no frontmatter, treat entire content as body
+        if not existing_meta:
+            body = content
+
+        # Format and write
+        full_content = format_frontmatter(metadata, body)
+        path = self.memory_blocks_dir / f"{label}.md"
+        path.write_text(full_content)
 
         # Stage and commit
         rel_path = path.relative_to(self.user_dir)
@@ -199,7 +314,7 @@ class GitUserStorage:
             List of VersionInfo, newest first
 
         """
-        path = self.blocks_dir / f"{label}.toml"
+        path = self.memory_blocks_dir / f"{label}.md"
         rel_path = path.relative_to(self.user_dir)
 
         if not path.exists():
@@ -234,7 +349,7 @@ class GitUserStorage:
         """
         try:
             commit = self.repo.commit(commit_sha)
-            rel_path = f"blocks/{label}.toml"
+            rel_path = f"memory-blocks/{label}.md"
             blob = commit.tree / rel_path
             return blob.data_stream.read().decode("utf-8")
         except Exception as e:
@@ -320,9 +435,9 @@ class GitUserStorage:
 
     def list_blocks(self) -> list[str]:
         """List all block labels in storage."""
-        if not self.blocks_dir.exists():
+        if not self.memory_blocks_dir.exists():
             return []
-        return [p.stem for p in self.blocks_dir.glob("*.toml")]
+        return [p.stem for p in self.memory_blocks_dir.glob("*.md")]
 
 
 class GitUserStorageManager:

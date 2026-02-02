@@ -383,6 +383,7 @@ class CurriculumLoader:
 
             tasks.append(
                 TaskConfig(
+                    name=task_data.get("name", ""),
                     schedule=task_data.get("schedule"),
                     manual=task_data.get("manual", True),
                     on_idle=task_data.get("on_idle", False),

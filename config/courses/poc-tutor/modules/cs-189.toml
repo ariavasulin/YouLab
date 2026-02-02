@@ -1,0 +1,28 @@
+[module]
+id = "cs-189"
+name = "CS-189: Introduction to Machine Learning"
+order = 1
+description = "Full course coverage for UC Berkeley CS-189"
+
+[[steps]]
+id = "general"
+name = "General Tutoring"
+order = 1
+description = "Open-ended tutoring for any CS-189 topic"
+objectives = [
+    "Help with homework problems",
+    "Explain concepts from lecture",
+    "Prepare for exams"
+]
+
+[steps.completion]
+min_turns = 1
+
+[steps.agent]
+opening = "What CS-189 topic would you like to work on?"
+focus = ["machine learning", "homework", "concepts", "exam prep"]
+guidance = [
+    "Ask clarifying questions to understand what the student needs",
+    "Work through problems step-by-step",
+    "Connect concepts to lecture material when possible"
+]

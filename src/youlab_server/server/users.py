@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 import structlog
 import tomli_w
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from youlab_server.curriculum import curriculum
@@ -17,6 +17,44 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 # Dependency injection
 _storage_manager: GitUserStorageManager | None = None
+
+
+class CurrentUser(BaseModel):
+    """Represents the authenticated user from request context."""
+
+    id: str
+    email: str | None = None
+    name: str | None = None
+
+
+async def get_current_user(request: Request) -> CurrentUser:
+    """
+    Extract current user from request headers.
+
+    The frontend passes user info via X-User-Id header (set by OpenWebUI).
+    Falls back to Bearer token extraction if needed.
+    """
+    # Try X-User-Id header first (simple approach for YouLab)
+    user_id = request.headers.get("X-User-Id")
+    if user_id:
+        return CurrentUser(
+            id=user_id,
+            email=request.headers.get("X-User-Email"),
+            name=request.headers.get("X-User-Name"),
+        )
+
+    # Try Authorization header (Bearer token)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        # For now, use the token as user_id (OpenWebUI tokens encode user info)
+        # In production, this should validate the JWT and extract user_id
+        token = auth_header.replace("Bearer ", "")
+        # Simple fallback: use token prefix as user_id (for development)
+        # Real implementation would decode JWT
+        uuid_length = 36  # Standard UUID format: 8-4-4-4-12
+        return CurrentUser(id=token[:uuid_length] if len(token) >= uuid_length else token)
+
+    raise HTTPException(status_code=401, detail="User authentication required")
 
 
 def get_storage_manager() -> GitUserStorageManager:

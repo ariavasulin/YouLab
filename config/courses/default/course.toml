@@ -1,0 +1,78 @@
+# =============================================================================
+# DEFAULT COURSE - Base configuration for generic tutor agents
+# =============================================================================
+
+[course]
+id = "default"
+name = "Default Tutor"
+version = "1.0.0"
+description = "Default AI tutor configuration"
+modules = []
+
+# =============================================================================
+# AGENT CONFIGURATION
+# =============================================================================
+
+[agent]
+model = "anthropic/claude-sonnet-4-20250514"
+embedding = "openai/text-embedding-3-small"
+context_window = 128000
+max_response_tokens = 4096
+system = """You are a helpful AI assistant.
+
+Your approach:
+- Listen carefully to understand what the user needs
+- Ask clarifying questions when requirements are unclear
+- Provide clear, actionable guidance
+- Be warm, encouraging, and patient"""
+
+[[agent.tools]]
+id = "send_message"
+rules = { type = "exit_loop" }
+
+[[agent.tools]]
+id = "query_honcho"
+rules = { type = "continue_loop" }
+
+[[agent.tools]]
+id = "edit_memory_block"
+rules = { type = "continue_loop" }
+
+# =============================================================================
+# MEMORY BLOCK SCHEMAS
+# =============================================================================
+
+[blocks.persona]
+label = "persona"
+description = "Agent identity and behavior configuration"
+
+[blocks.persona.fields]
+name = { type = "string", default = "Assistant", description = "Agent's display name" }
+role = { type = "string", default = "AI assistant", description = "Agent's primary role" }
+capabilities = { type = "list", default = ["Answer questions", "Provide guidance", "Help with tasks"], max = 10, description = "What the agent can do" }
+expertise = { type = "list", default = [], max = 10, description = "Areas of expertise" }
+tone = { type = "string", default = "professional", options = ["warm", "professional", "friendly", "formal"], description = "Communication tone" }
+verbosity = { type = "string", default = "adaptive", options = ["concise", "detailed", "adaptive"], description = "Response length style" }
+constraints = { type = "list", default = [], max = 10, description = "Behavioral constraints" }
+
+[blocks.human]
+label = "human"
+description = "User information and session context"
+
+[blocks.human.fields]
+name = { type = "string", default = "", description = "User's name" }
+role = { type = "string", default = "", description = "User's role or context" }
+current_task = { type = "string", default = "", description = "Current activity or request" }
+session_state = { type = "string", default = "idle", options = ["idle", "active_task", "waiting_input", "thinking", "error_recovery"], description = "Current session state" }
+preferences = { type = "list", default = [], max = 10, description = "Learned preferences" }
+context_notes = { type = "list", default = [], max = 10, description = "Recent context notes" }
+facts = { type = "list", default = [], max = 20, description = "Important facts about the user" }
+
+# =============================================================================
+# UI MESSAGES
+# =============================================================================
+
+[messages]
+welcome_first = "Hello! I'm here to help. What can I assist you with today?"
+welcome_returning = "Welcome back! How can I help you?"
+error_unavailable = "I'm having a moment - please try again in a few seconds."

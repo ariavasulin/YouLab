@@ -165,7 +165,7 @@ class MemoryEnricher:
         if field == "context_notes":
             if strategy == MergeStrategy.REPLACE:
                 human.context_notes = [content]
-            else:  # APPEND or LLM_DIFF (TODO: implement diff)
+            else:  # APPEND or LLM_DIFF (diff not yet implemented)
                 human.add_context_note(content)
         elif field == "facts":
             if strategy == MergeStrategy.REPLACE:
