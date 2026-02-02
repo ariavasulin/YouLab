@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 import httpx
 
@@ -300,6 +301,76 @@ class OpenWebUIClient:
     async def close(self) -> None:
         """Close HTTP client."""
         await self.client.aclose()
+
+    # Folder and Chat management methods for background agent threads
+
+    async def list_folders(self) -> list[dict[str, Any]]:
+        """List all folders for the current user."""
+        resp = await self.client.get("/api/folders/")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def create_folder(self, name: str, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Create a new folder."""
+        resp = await self.client.post(
+            "/api/folders/",
+            json={"name": name, "meta": meta or {}},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def ensure_folder(self, name: str, meta: dict[str, Any] | None = None) -> str:
+        """Ensure a folder exists, creating it if needed. Returns folder ID."""
+        folders = await self.list_folders()
+        existing = next((f for f in folders if f["name"] == name), None)
+        if existing:
+            return existing["id"]
+        new_folder = await self.create_folder(name, meta)
+        return new_folder["id"]
+
+    async def get_chats_by_folder(self, folder_id: str, page: int = 1) -> list[dict[str, Any]]:
+        """Get chats in a folder, sorted by updated_at desc."""
+        resp = await self.client.get(
+            f"/api/chats/folder/{folder_id}/list",
+            params={"page": page},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def create_chat(
+        self, chat_data: dict[str, Any], folder_id: str | None = None
+    ) -> dict[str, Any]:
+        """Create a new chat."""
+        resp = await self.client.post(
+            "/api/chats/new",
+            json={"chat": chat_data, "folder_id": folder_id},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def update_chat(self, chat_id: str, chat_data: dict[str, Any]) -> dict[str, Any]:
+        """Update a chat's data (title, etc)."""
+        resp = await self.client.post(
+            f"/api/chats/{chat_id}",
+            json={"chat": chat_data},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def update_chat_folder(self, chat_id: str, folder_id: str) -> dict[str, Any]:
+        """Move a chat to a folder."""
+        resp = await self.client.post(
+            f"/api/chats/{chat_id}/folder",
+            json={"folder_id": folder_id},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def archive_chat(self, chat_id: str) -> dict[str, Any]:
+        """Archive a chat."""
+        resp = await self.client.post(f"/api/chats/{chat_id}/archive")
+        resp.raise_for_status()
+        return resp.json()
 
 
 def _parse_datetime(value: str | int | None) -> datetime:

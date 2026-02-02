@@ -11,8 +11,9 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from youlab_server.curriculum.schema import BackgroundAgentConfig
+    from youlab_server.curriculum.schema import BackgroundAgentConfig, TaskConfig
     from youlab_server.honcho.client import HonchoClient
+    from youlab_server.storage.git import GitUserStorageManager
 
 from youlab_server.background.runner import BackgroundAgentRunner
 from youlab_server.curriculum import curriculum
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/background", tags=["background"])
 # Global state
 _runner: BackgroundAgentRunner | None = None
 _initialized: bool = False
+_storage_manager: GitUserStorageManager | None = None
 
 # Limit for errors in response
 MAX_ERRORS_IN_RESPONSE = 10
@@ -33,6 +35,7 @@ def initialize_background(
     letta_client: Any,
     honcho_client: HonchoClient | None,
     config_dir: Path,
+    storage_manager: GitUserStorageManager | None = None,
 ) -> None:
     """
     Initialize background agent system.
@@ -41,14 +44,22 @@ def initialize_background(
         letta_client: Letta client instance
         honcho_client: Honcho client (optional)
         config_dir: Directory containing course configs (unused, curriculum is pre-initialized)
+        storage_manager: Git storage manager for creating PendingDiffs
 
     """
-    global _runner, _initialized
+    global _runner, _initialized, _storage_manager
 
-    _runner = BackgroundAgentRunner(letta_client, honcho_client)
+    _storage_manager = storage_manager
+    _runner = BackgroundAgentRunner(
+        letta_client,
+        honcho_client,
+        storage_manager=storage_manager,
+    )
 
     # Curriculum is already initialized by server startup
-    # Background agents are accessed via curriculum.get(course_id).background
+    # Background agents are accessed via:
+    # - course.background (v1 dict format)
+    # - course.tasks (v2 list format)
 
     _initialized = True
     log.info("background_system_initialized")
@@ -102,7 +113,7 @@ async def run_background_agent(
     Manually trigger a background agent run.
 
     Args:
-        agent_id: ID of the background agent to run
+        agent_id: ID of the background agent (task name) to run
         request: Optional user filtering
 
     Returns:
@@ -112,19 +123,43 @@ async def run_background_agent(
     if not _initialized or _runner is None:
         raise HTTPException(status_code=503, detail="Background system not initialized")
 
-    # Find the agent config across all courses
-    agent_config: BackgroundAgentConfig | None = None
+    # Find the config across all courses
+    # Check both v1 (course.background dict) and v2 (course.tasks list) formats
+    found_config: BackgroundAgentConfig | TaskConfig | None = None
+    config_type: str = "unknown"
+
     for course_id in curriculum.list_courses():
         course = curriculum.get(course_id)
-        if course and agent_id in course.background:
-            agent_config = course.background[agent_id]
+        if not course:
+            continue
+
+        # v1 format: course.background[agent_id]
+        if agent_id in course.background:
+            found_config = course.background[agent_id]
+            config_type = "v1"
             break
 
-    if agent_config is None:
+        # v2 format: course.tasks list with matching name
+        for task in course.tasks:
+            if task.name == agent_id:
+                found_config = task
+                config_type = "v2"
+                break
+
+        if found_config is not None:
+            break
+
+    if found_config is None:
         raise HTTPException(status_code=404, detail=f"Background agent not found: {agent_id}")
 
     user_ids = request.user_ids if request else None
-    result = await _runner.run_agent(agent_config, user_ids, agent_id=agent_id)
+
+    if config_type == "v2":
+        # v2 TaskConfig - use run_task method
+        result = await _runner.run_task(found_config, user_ids, task_name=agent_id)  # type: ignore[arg-type]
+    else:
+        # v1 BackgroundAgentConfig - use legacy run_agent method
+        result = await _runner.run_agent(found_config, user_ids, agent_id=agent_id)  # type: ignore[arg-type]
 
     return RunResponse(
         agent_id=result.agent_id,
@@ -140,26 +175,48 @@ async def run_background_agent(
 
 @router.get("/agents", response_model=list[AgentInfo])
 async def list_background_agents() -> list[AgentInfo]:
-    """List all configured background agents."""
+    """List all configured background agents (v1 and v2 formats)."""
     agents = []
     for course_id in curriculum.list_courses():
         course = curriculum.get(course_id)
-        if course:
-            for agent_id, config in course.background.items():
-                agents.append(
-                    AgentInfo(
-                        id=agent_id,
-                        name=agent_id,
-                        course_id=course_id,
-                        enabled=config.enabled,
-                        triggers={
-                            "schedule": config.triggers.schedule,
-                            "idle_enabled": config.triggers.idle.enabled,
-                            "manual": config.triggers.manual,
-                        },
-                        query_count=len(config.queries),
-                    )
+        if not course:
+            continue
+
+        # v1 format: course.background dict
+        for agent_id, config in course.background.items():
+            agents.append(
+                AgentInfo(
+                    id=agent_id,
+                    name=agent_id,
+                    course_id=course_id,
+                    enabled=config.enabled,
+                    triggers={
+                        "schedule": config.triggers.schedule,
+                        "idle_enabled": config.triggers.idle.enabled,
+                        "manual": config.triggers.manual,
+                    },
+                    query_count=len(config.queries),
                 )
+            )
+
+        # v2 format: course.tasks list
+        for task in course.tasks:
+            task_name = task.name or f"task_{course.tasks.index(task)}"
+            agents.append(
+                AgentInfo(
+                    id=task_name,
+                    name=task_name,
+                    course_id=course_id,
+                    enabled=True,  # v2 tasks are always enabled
+                    triggers={
+                        "schedule": task.schedule,
+                        "idle_enabled": task.on_idle,
+                        "manual": task.manual,
+                    },
+                    query_count=len(task.queries),
+                )
+            )
+
     return agents
 
 

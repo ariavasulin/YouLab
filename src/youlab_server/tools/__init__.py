@@ -4,14 +4,25 @@ Tool registry with default rules.
 This module provides:
 1. Agent-callable tools (query_honcho, edit_memory_block)
 2. Tool registry with default execution rules
+3. Both sandbox (HTTP-based) and legacy (in-process) tool versions
 """
 
 from enum import Enum
 from typing import NamedTuple
 
 from youlab_server.tools.curriculum import advance_lesson
-from youlab_server.tools.dialectic import query_honcho
-from youlab_server.tools.memory import edit_memory_block
+
+# Legacy tools (in-process, for direct use - don't work in Docker sandbox)
+from youlab_server.tools.dialectic import query_honcho as local_query_honcho
+from youlab_server.tools.memory import edit_memory_block as local_edit_memory_block
+
+# Sandbox tools (HTTP-based, for Letta registration - work in Docker sandbox)
+from youlab_server.tools.sandbox import edit_memory_block as sandbox_edit_memory_block
+from youlab_server.tools.sandbox import query_honcho as sandbox_query_honcho
+
+# Default exports are sandbox versions (what gets registered with Letta)
+query_honcho = sandbox_query_honcho
+edit_memory_block = sandbox_edit_memory_block
 
 # =============================================================================
 # TOOL RULE SYSTEM
@@ -101,5 +112,9 @@ __all__ = [
     "advance_lesson",
     "edit_memory_block",
     "get_tool_rule",
+    "local_edit_memory_block",
+    "local_query_honcho",
     "query_honcho",
+    "sandbox_edit_memory_block",
+    "sandbox_query_honcho",
 ]
