@@ -1,0 +1,84 @@
+# Production Docker Compose for YouLab
+# Usage: docker compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   1. Copy .env.example to .env.production and fill in your values
+#   2. Set RALPH_OPENROUTER_API_KEY (required)
+#   3. Change DOLT_ROOT_PASSWORD from default
+#
+# Access:
+#   - OpenWebUI: http://localhost:3000 (or via Cloudflare Tunnel)
+#   - Ralph API: http://localhost:8200 (internal)
+#   - Dolt: localhost:3307 (internal)
+
+services:
+  # OpenWebUI - Custom fork with YouLab branding and features
+  openwebui:
+    build:
+      context: https://github.com/ariavasulin/open-webui.git#main
+      dockerfile: Dockerfile
+    container_name: youlab-openwebui
+    ports:
+      - "127.0.0.1:3000:8080"  # Localhost only - expose via Cloudflare Tunnel
+    volumes:
+      - openwebui_data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Access host services
+    environment:
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-please-change-me-in-production}
+      - ENABLE_SIGNUP=false  # Disable public signups for security
+    restart: unless-stopped
+    depends_on:
+      ralph:
+        condition: service_healthy
+    networks:
+      - youlab
+
+  # Ralph - Backend API server
+  ralph:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youlab-ralph
+    ports:
+      - "127.0.0.1:8200:8200"  # Localhost only
+    env_file:
+      - .env.production
+    environment:
+      # Override Dolt host to use container name
+      - RALPH_DOLT_HOST=dolt
+      - RALPH_DOLT_PORT=3306  # Internal port, not mapped 3307
+    volumes:
+      - ralph_data:/data/ralph
+    restart: unless-stopped
+    depends_on:
+      dolt:
+        condition: service_started
+    networks:
+      - youlab
+
+  # Dolt - MySQL-compatible database with git-like versioning
+  dolt:
+    image: dolthub/dolt-sql-server:latest
+    container_name: youlab-dolt
+    ports:
+      - "127.0.0.1:3307:3306"  # Localhost only, mapped to 3307 to avoid MySQL conflict
+    volumes:
+      - dolt_data:/var/lib/dolt
+      - ./config/dolt/config.yaml:/etc/dolt/servercfg.d/config.yaml:ro
+      - ./config/dolt/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      DOLT_ROOT_PASSWORD: ${DOLT_ROOT_PASSWORD:-devpassword}
+      DOLT_ROOT_HOST: "%"
+    restart: unless-stopped
+    networks:
+      - youlab
+
+volumes:
+  openwebui_data:
+  ralph_data:
+  dolt_data:
+
+networks:
+  youlab:
+    driver: bridge

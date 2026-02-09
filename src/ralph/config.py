@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     dolt_password: str = "devpassword"  # noqa: S105 - dev default, overridden by env
     dolt_database: str = "youlab"
 
+    # OpenWebUI integration (for workspace sync)
+    openwebui_url: str | None = None  # e.g., https://openwebui.theyoulab.org
+    openwebui_api_key: str | None = None
+    sync_interval: int = 300  # seconds (default: 5 min)
+    sync_to_openwebui: bool = True  # Enable KB sync
+    sync_knowledge_prefix: str = "workspace"  # KB naming prefix
+
     @property
     def dolt_url(self) -> str:
         """SQLAlchemy async connection URL for Dolt."""

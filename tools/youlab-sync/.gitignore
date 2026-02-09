@@ -1,0 +1,19 @@
+# Build output
+build/
+dist/
+
+# Test coverage
+coverage.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Config with secrets (use example instead)
+config.yaml
