@@ -138,7 +138,12 @@ app = FastAPI(
 # CORS middleware - allow OpenWebUI frontend to call Ralph API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8080", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:3000",
+        "https://theyoulab.org",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
