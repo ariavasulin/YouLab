@@ -66,9 +66,9 @@ services:
     container_name: youlab-youlearn
     ports:
       - "127.0.0.1:10000:10000"  # Localhost only
+    env_file:
+      - .env.production
     environment:
-      - YOULEARN_OPENROUTER_API_KEY=${RALPH_OPENROUTER_API_KEY}
-      - YOULEARN_OPENROUTER_MODEL=${RALPH_OPENROUTER_MODEL:-anthropic/claude-sonnet-4-20250514}
       - YOULEARN_BACKEND_URL=http://youlab-youlearn:10000
     restart: unless-stopped
     networks:
