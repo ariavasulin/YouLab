@@ -13,17 +13,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Copy dependency files first (better layer caching)
+# Copy everything needed for install
 COPY pyproject.toml README.md ./
+COPY src/ ./src/
+COPY config/ ./config/
 
-# Create virtual environment and install dependencies
+# Create virtual environment and install package
 RUN uv venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 RUN uv pip install .
-
-# Copy source code
-COPY src/ ./src/
-COPY config/ ./config/
 
 # ---
 
