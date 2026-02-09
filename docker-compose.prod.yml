@@ -18,6 +18,8 @@ services:
     build:
       context: https://github.com/ariavasulin/open-webui.git#main
       dockerfile: Dockerfile
+      args:
+        VITE_YOULAB_API_URL: https://api.theyoulab.org
     container_name: youlab-openwebui
     ports:
       - "127.0.0.1:3000:8080"  # Localhost only - expose via Cloudflare Tunnel
