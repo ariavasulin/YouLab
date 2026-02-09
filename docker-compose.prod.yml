@@ -9,6 +9,7 @@
 # Access:
 #   - OpenWebUI: http://localhost:3000 (or via Cloudflare Tunnel)
 #   - Ralph API: http://localhost:8200 (internal)
+#   - YouLearn API: http://localhost:10000 (internal)
 #   - Dolt: localhost:3307 (internal)
 
 services:
@@ -54,6 +55,22 @@ services:
     depends_on:
       dolt:
         condition: service_started
+    networks:
+      - youlab
+
+  # YouLearn - AI study companion backend
+  youlearn:
+    build:
+      context: https://github.com/ariavasulin/YouLearn.git#demo-prod
+      dockerfile: backend/Dockerfile
+    container_name: youlab-youlearn
+    ports:
+      - "127.0.0.1:10000:10000"  # Localhost only
+    environment:
+      - YOULEARN_OPENROUTER_API_KEY=${RALPH_OPENROUTER_API_KEY}
+      - YOULEARN_OPENROUTER_MODEL=${RALPH_OPENROUTER_MODEL:-anthropic/claude-sonnet-4-20250514}
+      - YOULEARN_BACKEND_URL=http://youlab-youlearn:10000
+    restart: unless-stopped
     networks:
       - youlab
 
