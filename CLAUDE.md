@@ -1,77 +1,90 @@
 # YouLab Platform
 
-Introspective AI tutoring platform that learns about students and self-manages context through memory blocks and theory-of-mind modeling.
+Introspective AI tutoring platform with transparent, user-controlled context. Memory blocks are version-controlled and agent edits require user approval.
 
 ## Architecture Overview
 
-**Current State**: The project has two parallel implementations:
-
-1. **Legacy Stack** (`src/youlab_server/`) - Letta-based, fully featured but being phased out
-2. **Ralph MVP** (`src/ralph/`) - New Agno-based greenfield implementation, actively developed
-
-### Ralph Flow (New Architecture)
-
-Ralph provides a "Claude Code-like" experience: OpenWebUI chat → Agno Agent with file/shell tools.
-
 ```
-OpenWebUI → Ralph Pipe (HTTP client) → Ralph Server (FastAPI) → Agno Agent → OpenRouter API
-                                                                     ↓
-                                                              FileTools + ShellTools
-                                                                     ↓
-                                                              User Workspace
+OpenWebUI → Ralph Pipe → Ralph Server (FastAPI) → Agno Agent → OpenRouter API
+                                 │                    │
+                                 ▼                    ▼
+                              Dolt DB            User Workspace
+                         (memory blocks)         (files/shell)
+                                 │
+                                 ▼
+                              Honcho
+                        (message history)
 ```
 
 **Key Components**:
-- **Ralph Pipe** (`src/ralph/pipe.py`): Lightweight HTTP client for OpenWebUI, streams SSE events from Ralph server
-- **Ralph Server** (`src/ralph/server.py`): FastAPI backend that creates Agno agents per-request with workspace-scoped tools
-- **Agno Agent**: Uses `agno.agent.Agent` with OpenRouter model and `FileTools`/`ShellTools` scoped to user workspace
-- **Honcho Client** (`src/ralph/honcho.py`): Message persistence and dialectic queries for student insights
+- **Ralph Pipe** (`src/ralph/pipe.py`): HTTP client bridging OpenWebUI to Ralph server via SSE
+- **Ralph Server** (`src/ralph/server.py`): Creates per-request Agno agents with workspace-scoped tools
+- **Dolt** (`src/ralph/dolt.py`): MySQL-compatible DB with git-like versioning for memory blocks
+- **Honcho** (`src/ralph/honcho.py`): Message persistence and dialectic queries
 
 **Data Flow**:
 1. User sends message in OpenWebUI
-2. Pipe extracts user_id, chat_id, and full message history
-3. Pipe POSTs to Ralph server `/chat/stream` endpoint
-4. Server creates Agno agent with workspace tools and CLAUDE.md instructions
-5. Agent streams response via SSE with status updates
-6. Pipe forwards events to OpenWebUI event emitter
-
-### Legacy Stack (Being Phased Out)
-
-```
-OpenWebUI → Letta Pipe → YouLab Server (FastAPI) → Letta Server → Claude API
-                              ↘ Honcho (message persistence)
-```
-
-The legacy stack in `src/youlab_server/` uses Letta for agents, curriculum TOML configs, memory blocks, background agents, and git-based storage with diff approval workflows. This is being replaced by Ralph.
+2. Pipe extracts user_id, chat_id, forwards to `/chat/stream`
+3. Server builds agent with: base instructions + CLAUDE.md + memory blocks
+4. Agent streams response via SSE
+5. Messages persisted to Honcho (fire-and-forget)
 
 ## Project Structure
 
 ```
-src/ralph/                   # NEW: Agno-based MVP (active development)
-  __init__.py                # Exports Pipe
-  pipe.py                    # OpenWebUI Pipe (HTTP client to Ralph server)
-  server.py                  # FastAPI backend with Agno agent
-  honcho.py                  # Honcho client for message persistence
-  config.py                  # Pydantic settings (RALPH_* env vars)
-  tools/                     # Custom tools
-    query_honcho.py          # Honcho dialectic query tool
+src/ralph/                      # Main application
+├── server.py                   # FastAPI endpoints + Agno agent
+├── pipe.py                     # OpenWebUI pipe (HTTP client)
+├── config.py                   # Environment configuration
+├── dolt.py                     # Dolt database client
+├── memory.py                   # Memory context builder
+├── honcho.py                   # Honcho message persistence
+├── api/
+│   ├── blocks.py               # Memory block REST API
+│   ├── background.py           # Background task API
+│   ├── workspace.py            # Workspace file API
+│   └── notes_adapter.py        # OpenWebUI notes bridge
+├── tools/
+│   ├── memory_blocks.py        # Claude Code-style block editing
+│   ├── honcho_tools.py         # Conversation history queries
+│   └── latex_tools.py          # PDF note generation
+├── background/                 # Scheduled task infrastructure
+└── sync/                       # OpenWebUI KB sync
 
-src/youlab_server/           # LEGACY: Letta-based backend (being phased out)
-  agents/                    # BaseAgent + factories (deprecated)
-  memory/                    # Memory blocks, rotation strategies (deprecated)
-  pipelines/                 # OpenWebUI Pipe for Letta
-  server/                    # FastAPI HTTP service
-  honcho/                    # Honcho client
-  tools/                     # Agent tools (sandbox-compatible versions)
-  background/                # Background agent runner
-  curriculum/                # TOML course config system
-  storage/                   # Git-based user storage with diffs
-  observability/             # Logging, metrics, tracing (Langfuse)
-  config/                    # Pydantic settings
-
-config/courses/              # TOML course configs (legacy)
-OpenWebUI/open-webui/        # Nested git repo (NOT a submodule)
+src/youlab_server/              # Legacy Letta-based stack (deprecated)
+config/courses/                 # TOML agent definitions
+    {course}/agents.toml        # Agent, blocks, and tasks for course
 ```
+
+## Agent Configuration (TOML)
+
+Agents are defined in `config/courses/{course}/agents.toml`:
+
+```toml
+[agent]
+name = "Essay Coach"
+model = "anthropic/claude-sonnet-4"
+system_prompt = "..."
+tools = ["file_tools", "honcho_tools", "memory_blocks"]
+blocks = ["student", "journey"]
+
+[[block]]
+label = "student"
+title = "Student Profile"
+template = "## About Me\n\n[To be filled in]"
+
+[[task]]
+name = "weekly-review"
+trigger = { type = "cron", schedule = "0 9 * * 1" }
+system_prompt = "Review student progress..."
+tools = ["honcho_tools", "memory_blocks"]
+blocks = ["student"]
+```
+
+**Key rules**:
+- Only one `agents.toml` can define `[[block]]` schema for a given label
+- Blocks check if user has existing content before initializing from template
+- Multiple courses can share blocks (e.g., "student") without redefining them
 
 ## Commands
 
@@ -81,6 +94,10 @@ make setup
 
 # Ralph (new stack)
 uv run ralph-server              # Start Ralph HTTP backend on port 8200
+
+# LaTeX Notes (Tectonic required for PDF generation)
+brew install tectonic            # macOS
+cargo install tectonic           # Cross-platform via Rust
 
 # Legacy (being phased out)
 uv run youlab                    # Interactive mode (requires letta server)

@@ -1,0 +1,46 @@
+# YouLab Sync Configuration
+# Copy this file to ~/.youlab-sync/config.yaml and customize
+
+server:
+  # Ralph server URL
+  url: "http://localhost:8200"
+  # API key for authentication (optional, can also use YOULAB_API_KEY env var)
+  api_key: ""
+  # Your YouLab user ID (can also use YOULAB_USER_ID env var)
+  user_id: ""
+
+sync:
+  # Local folder to sync with the workspace
+  local_folder: "/path/to/your/folder"
+  # How often to check for remote changes (e.g., "30s", "1m", "5m")
+  interval: "30s"
+  # Enable bidirectional sync (pull remote changes too)
+  bidirectional: true
+
+watch:
+  # Enable file watching for real-time sync
+  enabled: true
+  # Debounce time to avoid syncing rapidly changing files
+  debounce: "500ms"
+
+# Patterns to ignore during sync
+ignore:
+  - ".git"
+  - ".DS_Store"
+  - "*.tmp"
+  - "*.temp"
+  - "*.swp"
+  - "*.swo"
+  - "node_modules"
+  - "__pycache__"
+  - ".pytest_cache"
+  - "*.log"
+  - "Thumbs.db"
+  - "desktop.ini"
+  - ".youlab-sync"
+
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  # Optional log file (leave empty for stdout)
+  file: ""
