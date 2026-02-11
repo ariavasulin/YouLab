@@ -30,9 +30,11 @@ FROM python:3.11-slim AS runtime
 # Install runtime dependencies and Tectonic (LaTeX compiler)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget ca-certificates \
-    && wget -qO /usr/local/bin/tectonic \
-       https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl \
+    && wget -qO /tmp/tectonic.tar.gz \
+       https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl.tar.gz \
+    && tar -xzf /tmp/tectonic.tar.gz -C /usr/local/bin tectonic \
     && chmod +x /usr/local/bin/tectonic \
+    && rm /tmp/tectonic.tar.gz \
     && apt-get purge -y wget \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
