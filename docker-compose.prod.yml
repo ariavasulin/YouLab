@@ -30,6 +30,7 @@ services:
     environment:
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-please-change-me-in-production}
       - ENABLE_SIGNUP=false  # Disable public signups for security
+      - ENABLE_WEBSOCKET_SUPPORT=false  # Use polling; Cloudflare Tunnel doesn't proxy WebSocket
     restart: unless-stopped
     depends_on:
       ralph:
