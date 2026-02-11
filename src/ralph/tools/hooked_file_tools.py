@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
 from agno.tools.file import FileTools
@@ -75,16 +76,20 @@ class HookedFileTools(FileTools):
 
         logger.info("auto_compile_triggered: path=%s user_id=%s", tex_path, self._user_id)
 
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self._compile_async(tex_path))  # noqa: RUF006
-        except RuntimeError:
-            logger.warning("no_event_loop_for_compile: path=%s", tex_path)
+        # Run compile_and_push in a background thread with its own event loop.
+        # Agno tool methods run synchronously, so there's typically no running
+        # event loop we can schedule onto.
+        thread = threading.Thread(
+            target=self._compile_in_thread,
+            args=(tex_path,),
+            daemon=True,
+        )
+        thread.start()
 
-    async def _compile_async(self, tex_path: Path) -> None:
-        """Async compilation wrapper with error handling."""
+    def _compile_in_thread(self, tex_path: Path) -> None:
+        """Run async compilation in a new event loop on a background thread."""
         try:
-            result = await compile_and_push(tex_path, self._user_id, self._chat_id)
+            result = asyncio.run(compile_and_push(tex_path, self._user_id, self._chat_id))
             logger.info("auto_compile_result: path=%s result=%s", tex_path, result)
         except Exception:
             logger.exception("auto_compile_failed: path=%s", tex_path)
