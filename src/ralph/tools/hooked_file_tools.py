@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import threading
 from typing import TYPE_CHECKING, Any
 
+import structlog
 from agno.tools.file import FileTools
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class HookedFileTools(FileTools):
@@ -43,6 +43,7 @@ class HookedFileTools(FileTools):
         encoding: str = "utf-8",
     ) -> str:
         """Save file and trigger LaTeX compilation if .tex."""
+        logger.info("save_file_called", file_name=file_name, is_tex=file_name.endswith(".tex"))
         result = super().save_file(contents, file_name, overwrite=overwrite, encoding=encoding)
         if file_name.endswith(".tex") and not result.startswith("Error"):
             self._trigger_compile(file_name)
@@ -69,10 +70,10 @@ class HookedFileTools(FileTools):
         tex_path = self.base_dir / file_name if not Path(file_name).is_absolute() else Path(file_name)
 
         if not tex_path.exists():
-            logger.warning("tex_file_not_found_for_compile: path=%s", tex_path)
+            logger.warning("tex_file_not_found_for_compile", path=str(tex_path))
             return
 
-        logger.info("auto_compile_triggered: path=%s user_id=%s", tex_path, self._user_id)
+        logger.info("auto_compile_triggered", path=str(tex_path), user_id=self._user_id)
 
         # Run compile_and_push in a background thread with its own event loop.
         # Agno tool methods run synchronously, so there's typically no running
@@ -90,6 +91,6 @@ class HookedFileTools(FileTools):
 
         try:
             result = asyncio.run(compile_and_push(tex_path, self._user_id, self._chat_id))
-            logger.info("auto_compile_result: path=%s result=%s", tex_path, result)
+            logger.info("auto_compile_result", path=str(tex_path), result=result)
         except Exception:
-            logger.exception("auto_compile_failed: path=%s", tex_path)
+            logger.exception("auto_compile_failed", path=str(tex_path))
