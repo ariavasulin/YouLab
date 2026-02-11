@@ -27,8 +27,14 @@ RUN uv pip install .
 
 FROM python:3.11-slim AS runtime
 
-# Install runtime dependencies only
+# Install runtime dependencies and Tectonic (LaTeX compiler)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget ca-certificates \
+    && wget -qO /usr/local/bin/tectonic \
+       https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-musl \
+    && chmod +x /usr/local/bin/tectonic \
+    && apt-get purge -y wget \
+    && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
