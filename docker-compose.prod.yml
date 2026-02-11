@@ -51,6 +51,9 @@ services:
       # Override Dolt host to use container name
       - RALPH_DOLT_HOST=dolt
       - RALPH_DOLT_PORT=3306  # Internal port, not mapped 3307
+      # OpenWebUI integration for artifact push
+      - RALPH_OPENWEBUI_URL=http://openwebui:8080
+      - RALPH_OPENWEBUI_API_KEY=${RALPH_OPENWEBUI_API_KEY}
     volumes:
       - ralph_data:/data/ralph
     restart: unless-stopped

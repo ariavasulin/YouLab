@@ -15,7 +15,6 @@ import structlog
 import uvicorn
 from agno.agent import Agent
 from agno.models.openrouter import OpenRouter
-from agno.tools.file import FileTools
 from agno.tools.shell import ShellTools
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,7 +38,8 @@ from ralph.config import get_settings
 from ralph.dolt import close_dolt_client, get_dolt_client
 from ralph.honcho import persist_message_fire_and_forget
 from ralph.memory import build_memory_context
-from ralph.tools import HonchoTools, LaTeXTools, MemoryBlockTools
+from ralph.tools import HonchoTools, MemoryBlockTools
+from ralph.tools.hooked_file_tools import HookedFileTools
 
 log = structlog.get_logger()
 
@@ -214,38 +214,18 @@ provide more surrounding context to make it unique, or use `replace_all=True`.
 
 ## Creating Notes
 
-You have access to a `render_notes` tool that creates professional PDF documents.
-When students ask for notes, summaries, or study materials, use this tool.
+You can create professional PDF notes by writing LaTeX files in the workspace.
 
 How to use:
-1. Call `render_notes(title="Topic Name", content="LaTeX content...")`
-2. Write the content using LaTeX formatting:
-   - Use \\section{"{}"} and \\subsection{"{}"} for organization
-   - Use $...$ for inline math (e.g., $x^2 + y^2 = r^2$)
-   - Use \\[...\\] for display equations
-   - Use \\begin{{definition}}, \\begin{{theorem}}, \\begin{{example}} for formal content
-   - Use \\begin{{itemize}} or \\begin{{enumerate}} for lists
-3. The PDF will appear in the student's artifacts panel
+1. Create or edit a .tex file using save_file (e.g., "lecture-notes.tex")
+2. The PDF will automatically compile and appear in the student's artifact panel
+3. Each time you save the .tex file, the PDF updates automatically
 
-Example content structure:
-\\section{{Introduction}}
-Brief overview of the topic...
+Write complete LaTeX documents with \\documentclass, \\begin{{document}}, etc.
+Use sections, math environments, theorems, and all standard LaTeX features.
+The student never sees LaTeX — they only see the beautiful PDF result.
 
-\\section{{Key Concepts}}
-\\begin{{definition}}
-A \\textbf{{quadratic equation}} is a polynomial equation of degree 2...
-\\end{{definition}}
-
-\\subsection{{The Quadratic Formula}}
-For $ax^2 + bx + c = 0$, the solutions are:
-\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]
-
-CRITICAL: When `render_notes` returns an HTML code block, you MUST include that
-entire code block VERBATIM in your response. Do not summarize, truncate, or omit it.
-The HTML code block is what triggers the PDF to appear in the student's artifacts panel.
-
-The student never sees LaTeX - they only see the beautiful PDF result.
-Use this tool proactively when students would benefit from well-organized notes.
+Use this capability proactively when students would benefit from organized notes.
 
 Always be helpful, encouraging, and focused on the student's learning goals."""
 
@@ -292,10 +272,13 @@ The following information has been recorded about this student. Use this to pers
             ),
             tools=[
                 strip_agno_fields(ShellTools(base_dir=workspace)),
-                strip_agno_fields(FileTools(base_dir=workspace)),
+                strip_agno_fields(HookedFileTools(
+                    base_dir=workspace,
+                    user_id=request.user_id,
+                    chat_id=request.chat_id,
+                )),
                 strip_agno_fields(HonchoTools()),  # Honcho query tool
                 strip_agno_fields(MemoryBlockTools()),  # Memory block tools
-                strip_agno_fields(LaTeXTools(workspace=workspace)),  # PDF notes
             ],
             instructions=instructions,
             markdown=True,
