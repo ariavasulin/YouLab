@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import base64
-import logging
 import subprocess
 from typing import TYPE_CHECKING
 
 import httpx
+import structlog
 
 from ralph.config import get_settings
 from ralph.tools.latex_templates import PDF_VIEWER_TEMPLATE
@@ -15,7 +15,7 @@ from ralph.tools.latex_templates import PDF_VIEWER_TEMPLATE
 if TYPE_CHECKING:
     from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def compile_and_push(
@@ -121,7 +121,7 @@ async def _push_artifact(
     settings = get_settings()
 
     if not settings.openwebui_url or not settings.openwebui_api_key:
-        logger.warning("artifact_push_skipped: RALPH_OPENWEBUI_URL or RALPH_OPENWEBUI_API_KEY not set")
+        logger.warning("artifact_push_skipped", reason="RALPH_OPENWEBUI_URL or RALPH_OPENWEBUI_API_KEY not set")
         return
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -136,6 +136,6 @@ async def _push_artifact(
             headers={"Authorization": f"Bearer {settings.openwebui_api_key}"},
         )
         if not resp.is_success:
-            logger.error("artifact_push_failed: status=%d body=%s", resp.status_code, resp.text[:200])
+            logger.error("artifact_push_failed", status=resp.status_code, body=resp.text[:200])
         else:
-            logger.info("artifact_pushed: user_id=%s title=%s", user_id, title)
+            logger.info("artifact_pushed", user_id=user_id, title=title)
