@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from agno.tools.file import FileTools
 
-from ralph.artifacts import compile_and_push
-
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -88,6 +86,8 @@ class HookedFileTools(FileTools):
 
     def _compile_in_thread(self, tex_path: Path) -> None:
         """Run async compilation in a new event loop on a background thread."""
+        from ralph.artifacts import compile_and_push
+
         try:
             result = asyncio.run(compile_and_push(tex_path, self._user_id, self._chat_id))
             logger.info("auto_compile_result: path=%s result=%s", tex_path, result)
