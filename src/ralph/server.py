@@ -30,6 +30,7 @@ from pathlib import Path
 
 from ralph.api.background import router as background_router
 from ralph.api.blocks import router as blocks_router
+from ralph.api.chats import router as chats_router
 from ralph.api.notes_adapter import router as notes_router
 from ralph.api.workspace import router as workspace_router
 from ralph.background import BackgroundExecutor, get_registry
@@ -161,6 +162,9 @@ app.include_router(notes_router, prefix="/api")
 
 # Include the workspace sync API router
 app.include_router(workspace_router)
+
+# Include the chat injection API router
+app.include_router(chats_router)
 
 
 @app.get("/health")
@@ -350,6 +354,36 @@ Now, the user says:
                     "chat_id": request.chat_id,
                 },
             ):
+                # Emit tool call and reasoning events as status updates
+                event_type = getattr(chunk, "event", None)
+                if event_type == "ToolCallStarted":
+                    tool = getattr(chunk, "tool", None)
+                    if tool:
+                        tool_name = getattr(tool, "tool_name", None) or "tool"
+                        yield {
+                            "event": "message",
+                            "data": json.dumps(
+                                {"type": "tool_call", "name": tool_name, "status": "started"}
+                            ),
+                        }
+                elif event_type == "ToolCallCompleted":
+                    tool = getattr(chunk, "tool", None)
+                    if tool:
+                        tool_name = getattr(tool, "tool_name", None) or "tool"
+                        yield {
+                            "event": "message",
+                            "data": json.dumps(
+                                {"type": "tool_call", "name": tool_name, "status": "completed"}
+                            ),
+                        }
+                elif event_type == "ReasoningContentDelta":
+                    reasoning = getattr(chunk, "reasoning_content", None)
+                    if reasoning:
+                        yield {
+                            "event": "message",
+                            "data": json.dumps({"type": "reasoning", "content": reasoning}),
+                        }
+
                 content = chunk.content
                 if content:
                     response_chunks.append(content)

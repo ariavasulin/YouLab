@@ -82,6 +82,9 @@ class Pipe:
         if self.valves.ENABLE_LOGGING:
             print(f"Ralph: user={user_id}, chat={chat_id}, messages={len(messages)}")
 
+        # Per-request state for reasoning block tracking
+        self._in_reasoning = False
+
         try:
             async with (
                 httpx.AsyncClient(timeout=300.0) as client,
@@ -150,9 +153,50 @@ class Pipe:
                         },
                     }
                 )
+            elif event_type == "tool_call":
+                tool_name = event.get("name", "tool")
+                status = event.get("status", "started")
+                if status == "started":
+                    # Show tool name as a status indicator
+                    friendly = tool_name.replace("_", " ").title()
+                    await emitter(
+                        {
+                            "type": "status",
+                            "data": {"description": f"Using {friendly}...", "done": False},
+                        }
+                    )
+                elif status == "completed":
+                    await emitter(
+                        {
+                            "type": "status",
+                            "data": {"description": "Tool complete", "done": True},
+                        }
+                    )
+            elif event_type == "reasoning":
+                reasoning = event.get("content", "")
+                if reasoning:
+                    if not self._in_reasoning:
+                        # Open a collapsible thinking block
+                        await emitter(
+                            {
+                                "type": "message",
+                                "data": {
+                                    "content": "\n<details>\n<summary>Thinking...</summary>\n\n"
+                                },
+                            }
+                        )
+                        self._in_reasoning = True
+                    await emitter({"type": "message", "data": {"content": reasoning}})
             elif event_type == "message":
+                if self._in_reasoning:
+                    # Close the thinking block before regular content
+                    await emitter({"type": "message", "data": {"content": "\n</details>\n\n"}})
+                    self._in_reasoning = False
                 await emitter({"type": "message", "data": {"content": event.get("content", "")}})
             elif event_type == "done":
+                if self._in_reasoning:
+                    await emitter({"type": "message", "data": {"content": "\n</details>\n\n"}})
+                    self._in_reasoning = False
                 await emitter({"type": "status", "data": {"description": "Complete", "done": True}})
             elif event_type == "error":
                 await emitter(
