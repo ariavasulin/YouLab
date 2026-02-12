@@ -356,6 +356,15 @@ Now, the user says:
             ):
                 # Emit tool call and reasoning events as status updates
                 event_type = getattr(chunk, "event", None)
+
+                # Skip terminal/summary events — they contain duplicate full content
+                if event_type in (
+                    "RunCompleted",
+                    "RunStarted",
+                    "RunContentCompleted",
+                ):
+                    continue
+
                 if event_type == "ToolCallStarted":
                     tool = getattr(chunk, "tool", None)
                     if tool:

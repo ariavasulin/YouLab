@@ -131,7 +131,7 @@ async def build_memory_context(
     for block in blocks:
         title = block.title or block.label.replace("_", " ").title()
         body = block.body or "(empty)"
-        sections.append(f"### {title}\n\n{body}\n")
+        sections.append(f"### {title} (label: `{block.label}`)\n\n{body}\n")
 
     return "\n".join(sections)
 
