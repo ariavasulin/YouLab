@@ -58,7 +58,9 @@ class HookedFileTools(FileTools):
         encoding: str = "utf-8",
     ) -> str:
         """Replace file chunk and trigger LaTeX compilation if .tex."""
-        result = super().replace_file_chunk(file_name, start_line, end_line, chunk, encoding=encoding)
+        result = super().replace_file_chunk(
+            file_name, start_line, end_line, chunk, encoding=encoding
+        )
         if file_name.endswith(".tex") and not result.startswith("Error"):
             self._trigger_compile(file_name)
         return result
@@ -67,7 +69,9 @@ class HookedFileTools(FileTools):
         """Trigger async compile_and_push from sync tool context."""
         from pathlib import Path
 
-        tex_path = self.base_dir / file_name if not Path(file_name).is_absolute() else Path(file_name)
+        tex_path = (
+            self.base_dir / file_name if not Path(file_name).is_absolute() else Path(file_name)
+        )
 
         if not tex_path.exists():
             logger.warning("tex_file_not_found_for_compile", path=str(tex_path))

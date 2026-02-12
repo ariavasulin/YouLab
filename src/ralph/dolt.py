@@ -643,9 +643,7 @@ class DoltClient:
         """Convert a database row to a BackgroundTask."""
         trigger_config = json.loads(row.trigger_config)
         if row.trigger_type == "cron":
-            trigger: CronTrigger | IdleTrigger = CronTrigger(
-                schedule=trigger_config["schedule"]
-            )
+            trigger: CronTrigger | IdleTrigger = CronTrigger(schedule=trigger_config["schedule"])
         else:
             trigger = IdleTrigger(
                 idle_minutes=trigger_config["idle_minutes"],
@@ -731,9 +729,7 @@ class DoltClient:
                 return None
             return self._row_to_task_run(row)
 
-    async def list_task_runs(
-        self, task_name: str | None = None, limit: int = 50
-    ) -> list[TaskRun]:
+    async def list_task_runs(self, task_name: str | None = None, limit: int = 50) -> list[TaskRun]:
         """List task runs, optionally filtered by task name."""
         async with self.session() as session:
             if task_name:
