@@ -81,7 +81,11 @@ class HonchoTools(Toolkit):
                 logger.debug("Dialectic returned None for user %s", user_id)
                 return "No insights available for this student yet."
 
-            preview = result.insight[:_LOG_PREVIEW_LENGTH] if len(result.insight) > _LOG_PREVIEW_LENGTH else result.insight
+            preview = (
+                result.insight[:_LOG_PREVIEW_LENGTH]
+                if len(result.insight) > _LOG_PREVIEW_LENGTH
+                else result.insight
+            )
             logger.debug("Dialectic response for user %s: %s", user_id, preview)
             return result.insight
 

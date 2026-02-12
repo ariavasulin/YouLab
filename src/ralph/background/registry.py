@@ -88,19 +88,11 @@ class TaskRegistry:
 
     def list_cron_tasks(self) -> list[BackgroundTask]:
         """List enabled tasks with cron triggers."""
-        return [
-            t
-            for t in self._tasks.values()
-            if t.enabled and isinstance(t.trigger, CronTrigger)
-        ]
+        return [t for t in self._tasks.values() if t.enabled and isinstance(t.trigger, CronTrigger)]
 
     def list_idle_tasks(self) -> list[BackgroundTask]:
         """List enabled tasks with idle triggers."""
-        return [
-            t
-            for t in self._tasks.values()
-            if t.enabled and isinstance(t.trigger, IdleTrigger)
-        ]
+        return [t for t in self._tasks.values() if t.enabled and isinstance(t.trigger, IdleTrigger)]
 
     async def set_enabled(self, name: str, enabled: bool) -> bool:
         """Enable or disable a task. Returns False if task not found."""

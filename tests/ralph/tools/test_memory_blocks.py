@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -65,7 +65,7 @@ class TestListMemoryBlocks:
                     title="Student Profile",
                     body="content",
                     schema_ref=None,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 ),
                 MemoryBlock(
                     user_id="test-user-123",
@@ -73,7 +73,7 @@ class TestListMemoryBlocks:
                     title="Learning Goals",
                     body="content",
                     schema_ref=None,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 ),
             ]
         )
@@ -126,7 +126,7 @@ class TestReadMemoryBlock:
                 title="Student Profile",
                 body="## About\n\nTest content here.",
                 schema_ref=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
 
@@ -168,7 +168,7 @@ class TestProposeMemoryEdit:
                 title="Student Profile",
                 body="The student likes math.",
                 schema_ref=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
         mock_dolt.create_proposal = AsyncMock(return_value="agent/test-user-123/student")
@@ -201,7 +201,7 @@ class TestProposeMemoryEdit:
                 title="Student Profile",
                 body="The student likes math.",
                 schema_ref=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
 
@@ -231,7 +231,7 @@ class TestProposeMemoryEdit:
                 title="Student Profile",
                 body="The student likes math. The student also likes science.",
                 schema_ref=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
 
@@ -261,7 +261,7 @@ class TestProposeMemoryEdit:
                 title="Student Profile",
                 body="The student likes math. The student also likes science.",
                 schema_ref=None,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
         mock_dolt.create_proposal = AsyncMock(return_value="agent/test-user-123/student")

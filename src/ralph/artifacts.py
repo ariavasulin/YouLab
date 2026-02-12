@@ -46,7 +46,7 @@ async def compile_and_push(
     if isinstance(pdf_bytes, str):
         # Push error to artifact panel so user sees it
         error_html = (
-            "<html><body style=\"font-family: sans-serif; padding: 20px;\">"
+            '<html><body style="font-family: sans-serif; padding: 20px;">'
             '<h2 style="color: #dc3545;">Compilation Error</h2>'
             '<pre style="background: #f8f9fa; padding: 16px; border-radius: 8px;'
             f' overflow-x: auto;">{pdf_bytes}</pre>'
@@ -121,7 +121,9 @@ async def _push_artifact(
     settings = get_settings()
 
     if not settings.openwebui_url or not settings.openwebui_api_key:
-        logger.warning("artifact_push_skipped", reason="RALPH_OPENWEBUI_URL or RALPH_OPENWEBUI_API_KEY not set")
+        logger.warning(
+            "artifact_push_skipped", reason="RALPH_OPENWEBUI_URL or RALPH_OPENWEBUI_API_KEY not set"
+        )
         return
 
     async with httpx.AsyncClient(timeout=30.0) as client:
