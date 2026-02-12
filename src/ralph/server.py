@@ -37,7 +37,7 @@ from ralph.background.scheduler import get_scheduler, stop_scheduler
 from ralph.config import get_settings
 from ralph.dolt import close_dolt_client, get_dolt_client
 from ralph.honcho import persist_message_fire_and_forget
-from ralph.memory import build_memory_context
+from ralph.memory import build_memory_context, ensure_welcome_blocks
 from ralph.tools import HonchoTools, MemoryBlockTools
 from ralph.tools.hooked_file_tools import HookedFileTools
 
@@ -188,17 +188,31 @@ async def chat_stream(request: ChatRequest) -> EventSourceResponse:
         else:
             log.info("claude_md_not_found", workspace=str(workspace))
 
-        # Build instructions
-        base_instructions = f"""You are a helpful AI tutor assistant.
+        # Extract system message from OpenWebUI (per-chat system prompt)
+        system_message = ""
+        chat_messages = list(request.messages)
+        if chat_messages and chat_messages[0].role == "system":
+            system_message = chat_messages.pop(0).content
+            log.info("system_message_extracted", length=len(system_message))
+
+        # Build base instructions — use per-chat system prompt if provided,
+        # otherwise fall back to the default generic prompt
+        if system_message:
+            base_instructions = system_message
+        else:
+            base_instructions = (
+                "You are a helpful AI tutor assistant. "
+                "Always be helpful, encouraging, and focused on the student's learning goals."
+            )
+
+        # Append tool usage instructions regardless of system prompt source
+        tool_instructions = f"""
+## Tool Usage
+
 Your workspace is: {workspace}
 You can read and write files, and execute shell commands within this workspace.
 
-You also have access to a `query_student` tool that lets you ask questions about
-the current student's learning history and context. Use this tool when you need
-to recall previous interactions, understand their learning style, or get context
-about what you've discussed before.
-
-## Memory Blocks
+### Memory Blocks
 
 You have access to memory blocks that contain persistent information about the student.
 These blocks are shown below in "Student Context" when available.
@@ -212,7 +226,7 @@ Important: The `old_string` in your edit must match the block content exactly,
 including whitespace and newlines. If the string appears multiple times,
 provide more surrounding context to make it unique, or use `replace_all=True`.
 
-## Creating Notes
+### Creating Notes
 
 You can create professional PDF notes by writing LaTeX files in the workspace.
 
@@ -223,28 +237,27 @@ How to use:
 
 Write complete LaTeX documents with \\documentclass, \\begin{{document}}, etc.
 Use sections, math environments, theorems, and all standard LaTeX features.
-The student never sees LaTeX — they only see the beautiful PDF result.
+The student never sees LaTeX — they only see the beautiful PDF result."""
 
-Use this capability proactively when students would benefit from organized notes.
-
-Always be helpful, encouraging, and focused on the student's learning goals."""
-
-        # Build memory context from Dolt
+        # Initialize welcome blocks for new users + build memory context
         memory_context = ""
+        is_new_user = False
         try:
             dolt = await get_dolt_client()
+            is_new_user = await ensure_welcome_blocks(dolt, request.user_id)
             memory_context = await build_memory_context(dolt, request.user_id)
             if memory_context:
                 log.info(
                     "memory_context_loaded",
                     user_id=request.user_id,
                     block_count=len(memory_context.split("###")) - 1,
+                    is_new_user=is_new_user,
                 )
         except Exception as e:
             log.warning("memory_context_load_failed", user_id=request.user_id, error=str(e))
 
         # Compose final instructions
-        instructions_parts = [base_instructions]
+        instructions_parts = [base_instructions, tool_instructions]
 
         if claude_md:
             instructions_parts.append(f"""---
@@ -272,11 +285,13 @@ The following information has been recorded about this student. Use this to pers
             ),
             tools=[
                 strip_agno_fields(ShellTools(base_dir=workspace)),
-                strip_agno_fields(HookedFileTools(
-                    base_dir=workspace,
-                    user_id=request.user_id,
-                    chat_id=request.chat_id,
-                )),
+                strip_agno_fields(
+                    HookedFileTools(
+                        base_dir=workspace,
+                        user_id=request.user_id,
+                        chat_id=request.chat_id,
+                    )
+                ),
                 strip_agno_fields(HonchoTools()),  # Honcho query tool
                 strip_agno_fields(MemoryBlockTools()),  # Memory block tools
             ],
@@ -284,21 +299,18 @@ The following information has been recorded about this student. Use this to pers
             markdown=True,
         )
 
-        # Format messages for Agno
-        # Convert our message history to Agno format
-        messages = request.messages
-
-        if len(messages) <= 1:
-            prompt = messages[-1].content if messages else ""
+        # Format messages for Agno (using chat_messages with system message stripped)
+        if len(chat_messages) <= 1:
+            prompt = chat_messages[-1].content if chat_messages else ""
         else:
             # Build context from previous messages
             history_parts = []
-            for msg in messages[:-1]:
+            for msg in chat_messages[:-1]:
                 role_label = "User" if msg.role == "user" else "Assistant"
                 history_parts.append(f"{role_label}: {msg.content}")
 
             history = "\n\n".join(history_parts)
-            current_message = messages[-1].content
+            current_message = chat_messages[-1].content
 
             prompt = f"""Here is our conversation so far:
 
@@ -310,7 +322,7 @@ Now, the user says:
 {current_message}"""
 
         # Persist user message to Honcho (fire-and-forget)
-        last_user_message = request.messages[-1].content if request.messages else ""
+        last_user_message = chat_messages[-1].content if chat_messages else ""
         persist_message_fire_and_forget(
             user_id=request.user_id,
             chat_id=request.chat_id,
