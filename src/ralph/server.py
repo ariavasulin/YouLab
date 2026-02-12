@@ -356,6 +356,7 @@ Now, the user says:
             ):
                 # Emit tool call and reasoning events as status updates
                 event_type = getattr(chunk, "event", None)
+                log.info("stream_chunk", event_type=event_type, has_content=bool(chunk.content))
 
                 # Skip terminal/summary events — they contain duplicate full content
                 if event_type in (
