@@ -6,6 +6,7 @@ description: Claude Code-like experience with OpenHands sandbox
 version: 0.1.0
 """
 
+import html as html_lib
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -82,9 +83,6 @@ class Pipe:
         if self.valves.ENABLE_LOGGING:
             print(f"Ralph: user={user_id}, chat={chat_id}, messages={len(messages)}")
 
-        # Per-request state for reasoning block tracking
-        self._in_reasoning = False
-
         try:
             async with (
                 httpx.AsyncClient(timeout=300.0) as client,
@@ -132,6 +130,33 @@ class Pipe:
                     )
         return ""
 
+    @staticmethod
+    def _format_tool_html(
+        tool_call_id: str,
+        tool_name: str,
+        arguments: dict[str, Any] | str,
+        done: bool,
+        result: str | None = None,
+    ) -> str:
+        """Format a tool call as OpenWebUI <details> HTML."""
+        if isinstance(arguments, dict):
+            args_str = json.dumps(arguments, indent=2)
+        else:
+            args_str = str(arguments)
+
+        attrs = (
+            f'type="tool_calls" '
+            f'done="{str(done).lower()}" '
+            f'id="{html_lib.escape(tool_call_id)}" '
+            f'name="{html_lib.escape(tool_name)}" '
+            f'arguments="{html_lib.escape(args_str)}"'
+        )
+        if done and result is not None:
+            attrs += f' result="{html_lib.escape(str(result))}"'
+
+        summary = "Tool Executed" if done else "Executing..."
+        return f"<details {attrs}>\n<summary>{summary}</summary>\n</details>\n\n"
+
     async def _handle_sse_event(
         self,
         data: str,
@@ -153,50 +178,9 @@ class Pipe:
                         },
                     }
                 )
-            elif event_type == "tool_call":
-                tool_name = event.get("name", "tool")
-                status = event.get("status", "started")
-                if status == "started":
-                    # Show tool name as a status indicator
-                    friendly = tool_name.replace("_", " ").title()
-                    await emitter(
-                        {
-                            "type": "status",
-                            "data": {"description": f"Using {friendly}...", "done": False},
-                        }
-                    )
-                elif status == "completed":
-                    await emitter(
-                        {
-                            "type": "status",
-                            "data": {"description": "Tool complete", "done": True},
-                        }
-                    )
-            elif event_type == "reasoning":
-                reasoning = event.get("content", "")
-                if reasoning:
-                    if not self._in_reasoning:
-                        # Open a collapsible thinking block
-                        await emitter(
-                            {
-                                "type": "message",
-                                "data": {
-                                    "content": "\n<details>\n<summary>Thinking...</summary>\n\n"
-                                },
-                            }
-                        )
-                        self._in_reasoning = True
-                    await emitter({"type": "message", "data": {"content": reasoning}})
             elif event_type == "message":
-                if self._in_reasoning:
-                    # Close the thinking block before regular content
-                    await emitter({"type": "message", "data": {"content": "\n</details>\n\n"}})
-                    self._in_reasoning = False
                 await emitter({"type": "message", "data": {"content": event.get("content", "")}})
             elif event_type == "done":
-                if self._in_reasoning:
-                    await emitter({"type": "message", "data": {"content": "\n</details>\n\n"}})
-                    self._in_reasoning = False
                 await emitter({"type": "status", "data": {"description": "Complete", "done": True}})
             elif event_type == "error":
                 await emitter(
@@ -205,6 +189,34 @@ class Pipe:
                         "data": {"content": f"Error: {event.get('message', 'Unknown')}"},
                     }
                 )
+            elif event_type == "tool_call_start":
+                await emitter(
+                    {
+                        "type": "status",
+                        "data": {
+                            "description": f"Running {event.get('tool_name', 'tool')}...",
+                            "done": False,
+                        },
+                    }
+                )
+            elif event_type == "tool_call_complete":
+                tool_html = self._format_tool_html(
+                    tool_call_id=event.get("tool_call_id", ""),
+                    tool_name=event.get("tool_name", ""),
+                    arguments=event.get("tool_args", {}),
+                    done=True,
+                    result=event.get("result", ""),
+                )
+                await emitter({"type": "message", "data": {"content": tool_html}})
+            elif event_type == "tool_call_error":
+                tool_html = self._format_tool_html(
+                    tool_call_id=event.get("tool_call_id", ""),
+                    tool_name=event.get("tool_name", ""),
+                    arguments={},
+                    done=True,
+                    result=f"Error: {event.get('error', 'Unknown')}",
+                )
+                await emitter({"type": "message", "data": {"content": tool_html}})
         except json.JSONDecodeError:
             if self.valves.ENABLE_LOGGING:
                 print(f"Failed to parse SSE: {data}")
