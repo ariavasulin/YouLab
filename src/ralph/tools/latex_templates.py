@@ -87,6 +87,7 @@ NOTES_TEMPLATE = r"""
 """
 
 # HTML template with embedded PDF.js viewer
+# No toolbar — full-bleed continuous scroll, fit-to-width
 # Uses legacy UMD build for broader iframe compatibility (no ES modules)
 PDF_VIEWER_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -97,153 +98,92 @@ PDF_VIEWER_TEMPLATE = """<!DOCTYPE html>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #525659;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
+        html, body { height: 100%%; overflow: hidden; }
+        body { background: white; }
+        #viewer {
+            width: 100%%;
+            height: 100%%;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
-        .toolbar {
-            background: #323639;
-            padding: 8px 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            color: white;
-            flex-shrink: 0;
+        .page-canvas {
+            display: block;
+            width: 100%%;
         }
-        .toolbar button {
-            background: #474a4d;
-            border: none;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .toolbar button:hover { background: #5a5d60; }
-        .toolbar button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .page-info {
-            font-size: 14px;
-            min-width: 100px;
-            text-align: center;
-        }
-        .zoom-controls { display: flex; align-items: center; gap: 8px; }
-        .spacer { flex: 1; }
-        .viewer {
-            flex: 1;
-            overflow: auto;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
-        #pdf-canvas {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            background: white;
-        }
-        .download-btn {
-            background: #0066cc !important;
-        }
-        .download-btn:hover { background: #0052a3 !important; }
         .error {
             color: #ff6b6b;
             padding: 20px;
             text-align: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
     </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button id="prev" disabled>&larr; Prev</button>
-        <span class="page-info"><span id="page-num">1</span> / <span id="page-count">-</span></span>
-        <button id="next" disabled>Next &rarr;</button>
-        <div class="zoom-controls">
-            <button id="zoom-out">-</button>
-            <span id="zoom-level">150%%</span>
-            <button id="zoom-in">+</button>
-        </div>
-        <div class="spacer"></div>
-        <button id="download" class="download-btn">Download PDF</button>
-    </div>
-    <div class="viewer">
-        <canvas id="pdf-canvas"></canvas>
-    </div>
+    <div id="viewer"></div>
     <script>
-        // PDF data embedded as base64
         var pdfBase64 = '%(pdf_base64)s';
-
-        // Decode base64 to binary
         var pdfData = atob(pdfBase64);
         var pdfBytes = new Uint8Array(pdfData.length);
         for (var i = 0; i < pdfData.length; i++) {
             pdfBytes[i] = pdfData.charCodeAt(i);
         }
 
-        // Set worker source
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         var pdfDoc = null;
-        var pageNum = 1;
-        var scale = 1.5;
-        var canvas = document.getElementById('pdf-canvas');
-        var ctx = canvas.getContext('2d');
+        var rendering = false;
+        var resizeTimer = null;
+        var viewer = document.getElementById('viewer');
 
-        function renderPage(num) {
-            pdfDoc.getPage(num).then(function(page) {
-                var viewport = page.getViewport({ scale: scale });
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
-                    document.getElementById('page-num').textContent = num;
-                    document.getElementById('prev').disabled = num <= 1;
-                    document.getElementById('next').disabled = num >= pdfDoc.numPages;
+        function renderAllPages() {
+            if (!pdfDoc || rendering) return;
+            rendering = true;
+            var scrollRatio = viewer.scrollHeight > 0 ? viewer.scrollTop / viewer.scrollHeight : 0;
+            viewer.innerHTML = '';
+
+            pdfDoc.getPage(1).then(function(firstPage) {
+                var unscaledViewport = firstPage.getViewport({ scale: 1 });
+                var scale = viewer.clientWidth / unscaledViewport.width;
+                var dpr = window.devicePixelRatio || 1;
+
+                var chain = Promise.resolve();
+                for (var i = 1; i <= pdfDoc.numPages; i++) {
+                    (function(pageNum) {
+                        chain = chain.then(function() {
+                            return pdfDoc.getPage(pageNum).then(function(page) {
+                                var viewport = page.getViewport({ scale: scale * dpr });
+                                var canvas = document.createElement('canvas');
+                                canvas.className = 'page-canvas';
+                                canvas.width = viewport.width;
+                                canvas.height = viewport.height;
+                                viewer.appendChild(canvas);
+                                return page.render({
+                                    canvasContext: canvas.getContext('2d'),
+                                    viewport: viewport
+                                }).promise;
+                            });
+                        });
+                    })(i);
+                }
+
+                chain.then(function() {
+                    rendering = false;
+                    viewer.scrollTop = scrollRatio * viewer.scrollHeight;
                 });
             });
         }
 
-        function updateZoom() {
-            document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%%';
-            renderPage(pageNum);
-        }
-
-        // Load PDF
         pdfjsLib.getDocument({ data: pdfBytes }).promise.then(function(pdf) {
             pdfDoc = pdf;
-            document.getElementById('page-count').textContent = pdf.numPages;
-            renderPage(pageNum);
+            renderAllPages();
         }).catch(function(err) {
-            document.querySelector('.viewer').innerHTML = '<div class="error">Error loading PDF: ' + err.message + '</div>';
+            viewer.innerHTML = '<div class="error">Error loading PDF: ' + err.message + '</div>';
         });
 
-        // Navigation
-        document.getElementById('prev').addEventListener('click', function() {
-            if (pageNum > 1) { pageNum--; renderPage(pageNum); }
-        });
-        document.getElementById('next').addEventListener('click', function() {
-            if (pageNum < pdfDoc.numPages) { pageNum++; renderPage(pageNum); }
-        });
-
-        // Zoom
-        document.getElementById('zoom-in').addEventListener('click', function() {
-            scale = Math.min(scale + 0.25, 3);
-            updateZoom();
-        });
-        document.getElementById('zoom-out').addEventListener('click', function() {
-            scale = Math.max(scale - 0.25, 0.5);
-            updateZoom();
-        });
-
-        // Download
-        document.getElementById('download').addEventListener('click', function() {
-            var blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = '%(filename)s';
-            a.click();
-            URL.revokeObjectURL(url);
-        });
+        new ResizeObserver(function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(renderAllPages, 150);
+        }).observe(viewer);
     </script>
 </body>
 </html>"""

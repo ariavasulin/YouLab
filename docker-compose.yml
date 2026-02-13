@@ -1,6 +1,7 @@
 services:
   dolt:
     image: dolthub/dolt-sql-server:latest
+    restart: unless-stopped
     ports:
       - "3307:3306"  # Avoid conflict with local MySQL
     volumes:

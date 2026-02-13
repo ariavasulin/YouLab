@@ -23,20 +23,11 @@ class TestTemplates:
         assert r"\newtheorem{lemma}" in NOTES_TEMPLATE
         assert r"\newtheorem{example}" in NOTES_TEMPLATE
 
-    def test_viewer_template_has_navigation(self) -> None:
-        """Test that PDF viewer has navigation controls."""
-        assert 'id="prev"' in PDF_VIEWER_TEMPLATE
-        assert 'id="next"' in PDF_VIEWER_TEMPLATE
-        assert 'id="page-num"' in PDF_VIEWER_TEMPLATE
-        assert 'id="page-count"' in PDF_VIEWER_TEMPLATE
+    def test_viewer_template_has_viewer(self) -> None:
+        """Test that PDF viewer has the main viewer element."""
+        assert 'id="viewer"' in PDF_VIEWER_TEMPLATE
 
-    def test_viewer_template_has_zoom(self) -> None:
-        """Test that PDF viewer has zoom controls."""
-        assert 'id="zoom-in"' in PDF_VIEWER_TEMPLATE
-        assert 'id="zoom-out"' in PDF_VIEWER_TEMPLATE
-        assert 'id="zoom-level"' in PDF_VIEWER_TEMPLATE
-
-    def test_viewer_template_has_download(self) -> None:
-        """Test that PDF viewer has download button."""
-        assert 'id="download"' in PDF_VIEWER_TEMPLATE
-        assert "download-btn" in PDF_VIEWER_TEMPLATE
+    def test_viewer_template_has_pdf_rendering(self) -> None:
+        """Test that PDF viewer includes PDF.js rendering logic."""
+        assert "pdfjsLib" in PDF_VIEWER_TEMPLATE
+        assert "renderAllPages" in PDF_VIEWER_TEMPLATE

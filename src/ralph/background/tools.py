@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from agno.tools.toolkit import Toolkit
 
 from ralph.config import get_settings
+from ralph.sync.hooks import attach_sync_hooks
 
 
 def strip_agno_fields(toolkit: Toolkit) -> Toolkit:
@@ -52,7 +53,9 @@ def create_tools_for_task(
 
     for name in tool_names:
         if name == "file_tools":
-            tools.append(strip_agno_fields(FileTools(base_dir=workspace)))
+            ft = FileTools(base_dir=workspace)
+            attach_sync_hooks(ft, workspace, user_id)
+            tools.append(strip_agno_fields(ft))
         elif name == "shell_tools":
             tools.append(strip_agno_fields(ShellTools(base_dir=workspace)))
 

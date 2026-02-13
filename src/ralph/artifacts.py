@@ -101,13 +101,10 @@ def _compile_latex(tex_path: Path) -> bytes | str:
 def _build_viewer(pdf_bytes: bytes, title: str) -> str:
     """Build self-contained HTML PDF viewer."""
     pdf_base64 = base64.b64encode(pdf_bytes).decode("ascii")
-    safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in title)
-    filename = f"{safe_title.strip()[:50] or 'notes'}.pdf"
 
     return PDF_VIEWER_TEMPLATE % {
         "title": title,
         "pdf_base64": pdf_base64,
-        "filename": filename,
     }
 
 
