@@ -45,6 +45,8 @@ from ralph.config import get_settings
 from ralph.dolt import close_dolt_client, get_dolt_client
 from ralph.honcho import persist_message_fire_and_forget
 from ralph.memory import build_memory_context, ensure_welcome_blocks
+from ralph.sync.hooks import attach_sync_hooks, capture_event_loop
+from ralph.sync.service import close_sync_client
 from ralph.tools import HonchoTools, MemoryBlockTools
 from ralph.tools.hooked_file_tools import HookedFileTools
 
@@ -102,6 +104,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     log.info("ralph_server_starting", model=settings.openrouter_model)
 
+    # Capture event loop for sync hooks (needed when Agno runs tools in thread pool)
+    capture_event_loop()
+
     # Initialize Dolt connection pool
     dolt = None
     try:
@@ -129,6 +134,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
     await stop_scheduler()
     log.info("background_scheduler_stopped")
+
+    await close_sync_client()
+    log.info("sync_client_closed")
 
     await close_dolt_client()
     log.info("dolt_client_disconnected")
@@ -288,6 +296,14 @@ The following information has been recorded about this student. Use this to pers
         instructions = "\n\n".join(instructions_parts)
 
         # Build the agent with tools (strip Agno fields Mistral doesn't accept)
+        file_tools = HookedFileTools(
+            base_dir=workspace,
+            user_id=request.user_id,
+            chat_id=request.chat_id,
+        )
+        attach_sync_hooks(file_tools, workspace, request.user_id)
+        strip_agno_fields(file_tools)
+
         agent = Agent(
             model=OpenRouter(
                 id=settings.openrouter_model,
@@ -295,13 +311,7 @@ The following information has been recorded about this student. Use this to pers
             ),
             tools=[
                 strip_agno_fields(ShellTools(base_dir=workspace)),
-                strip_agno_fields(
-                    HookedFileTools(
-                        base_dir=workspace,
-                        user_id=request.user_id,
-                        chat_id=request.chat_id,
-                    )
-                ),
+                file_tools,
                 strip_agno_fields(HonchoTools()),  # Honcho query tool
                 strip_agno_fields(MemoryBlockTools()),  # Memory block tools
             ],

@@ -46,6 +46,7 @@ dev = [
     "ruff>=0.4.0",
     "basedpyright>=1.22.0",
     "pre-commit>=3.7",
+    "websockets>=15.0.1",
 ]
 legacy = [
     # Letta-based stack (being phased out)

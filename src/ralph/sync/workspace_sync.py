@@ -18,6 +18,7 @@ import structlog
 from ralph.sync.models import FileIndexEntry, FileMetadata, SyncResult, SyncState
 
 if TYPE_CHECKING:
+    from ralph.sync.knowledge import KnowledgeService
     from ralph.sync.openwebui_client import OpenWebUIClient
 
 log = structlog.get_logger()
@@ -62,6 +63,65 @@ def should_ignore(path: Path, ignore_patterns: set[str]) -> bool:
             if parent.name in ignore_patterns:
                 return True
     return False
+
+
+async def sync_file_to_kb(
+    file_path: Path,
+    user_id: str,
+    openwebui_client: OpenWebUIClient,
+    knowledge_service: KnowledgeService,
+) -> None:
+    """
+    Sync a single file to the user's OpenWebUI knowledge base.
+
+    If the file exists on disk, uploads it (replacing any previous version).
+    If the file doesn't exist, removes it from the KB.
+    """
+    kb_id = await knowledge_service.get_or_create_knowledge(user_id)
+
+    if file_path.exists() and file_path.is_file():
+        content = file_path.read_bytes()
+        file_hash = compute_hash(content)
+
+        # Check if file already exists in KB (by filename)
+        kb_files = await openwebui_client.get_knowledge_files(kb_id)
+        for existing in kb_files:
+            existing_name = existing.get("meta", {}).get("name", existing.get("filename", ""))
+            if existing_name == file_path.name:
+                # Delete old version, upload new below
+                await openwebui_client.remove_file_from_knowledge(kb_id, existing["id"])
+                await openwebui_client.delete_file(existing["id"])
+                break
+
+        # Upload new version
+        file_info = await openwebui_client.upload_file(
+            filename=file_path.name,
+            content=content,
+        )
+        await openwebui_client.add_file_to_knowledge(kb_id, file_info["id"])
+
+        log.info(
+            "file_synced_to_kb",
+            user_id=user_id,
+            file=file_path.name,
+            hash=file_hash[:20],
+            kb_id=kb_id,
+        )
+    else:
+        # File was deleted - remove from KB
+        kb_files = await openwebui_client.get_knowledge_files(kb_id)
+        for existing in kb_files:
+            existing_name = existing.get("meta", {}).get("name", existing.get("filename", ""))
+            if existing_name == file_path.name:
+                await openwebui_client.remove_file_from_knowledge(kb_id, existing["id"])
+                await openwebui_client.delete_file(existing["id"])
+                log.info(
+                    "file_removed_from_kb",
+                    user_id=user_id,
+                    file=file_path.name,
+                    kb_id=kb_id,
+                )
+                break
 
 
 class WorkspaceSync:

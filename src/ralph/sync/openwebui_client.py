@@ -29,6 +29,65 @@ class OpenWebUIError(Exception):
         self.status_code = status_code
 
 
+# Extensions that should be uploaded as text/plain so OpenWebUI can index them
+_TEXT_EXTENSIONS = {
+    ".tex",
+    ".txt",
+    ".md",
+    ".csv",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".conf",
+    ".log",
+    ".xml",
+    ".html",
+    ".css",
+    ".js",
+    ".ts",
+    ".py",
+    ".rb",
+    ".rs",
+    ".go",
+    ".java",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".r",
+    ".m",
+    ".jl",
+    ".lua",
+    ".pl",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".ex",
+    ".exs",
+    ".hs",
+    ".ml",
+    ".rst",
+    ".org",
+    ".adoc",
+    ".bib",
+}
+
+
+def _guess_content_type(filename: str) -> str:
+    """Guess MIME type, defaulting text-like extensions to text/plain."""
+    ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in _TEXT_EXTENSIONS:
+        return "text/plain"
+    return "application/octet-stream"
+
+
 class OpenWebUIClient:
     """
     HTTP client for OpenWebUI API.
@@ -119,13 +178,16 @@ class OpenWebUIClient:
 
     # File Operations
 
-    async def upload_file(self, filename: str, content: bytes) -> dict[str, Any]:
+    async def upload_file(
+        self, filename: str, content: bytes, content_type: str | None = None
+    ) -> dict[str, Any]:
         """
         Upload a file to OpenWebUI.
 
         Args:
             filename: Name for the uploaded file.
             content: File content as bytes.
+            content_type: MIME type. If None, inferred from extension.
 
         Returns:
             File metadata including 'id'.
@@ -133,8 +195,11 @@ class OpenWebUIClient:
         """
         client = await self._get_client()
 
+        if content_type is None:
+            content_type = _guess_content_type(filename)
+
         # OpenWebUI expects multipart form data
-        files = {"file": (filename, io.BytesIO(content))}
+        files = {"file": (filename, io.BytesIO(content), content_type)}
 
         try:
             response = await client.post("/api/v1/files/", files=files)
@@ -203,7 +268,11 @@ class OpenWebUIClient:
             List of knowledge base metadata.
 
         """
-        return await self._request("GET", "/api/v1/knowledge/")  # type: ignore[no-any-return]
+        result = await self._request("GET", "/api/v1/knowledge/")
+        # OpenWebUI wraps the list in {"items": [...]}
+        if isinstance(result, dict) and "items" in result:
+            return result["items"]  # type: ignore[no-any-return]
+        return result  # type: ignore[no-any-return]
 
     async def create_knowledge(self, name: str, description: str = "") -> dict[str, Any]:
         """
@@ -256,8 +325,8 @@ class OpenWebUIClient:
 
         """
         kb = await self._request("GET", f"/api/v1/knowledge/{knowledge_id}")
-        # Files are nested under 'files' key
-        return kb.get("files", [])  # type: ignore[no-any-return]
+        # Files are nested under 'files' key (can be None)
+        return kb.get("files") or []  # type: ignore[no-any-return]
 
     async def add_file_to_knowledge(self, knowledge_id: str, file_id: str) -> None:
         """

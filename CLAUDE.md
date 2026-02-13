@@ -25,9 +25,9 @@ OpenWebUI → Ralph Pipe → Ralph Server (FastAPI) → Agno Agent → OpenRoute
 **Data Flow**:
 1. User sends message in OpenWebUI
 2. Pipe extracts user_id, chat_id, forwards to `/chat/stream`
-3. Server builds agent with: base instructions + CLAUDE.md + memory blocks
-4. Agent streams response via SSE
-5. Messages persisted to Honcho (fire-and-forget)
+3. Server creates ephemeral agent: base instructions + tool guide + CLAUDE.md + memory blocks
+4. Agent streams response via SSE (event types: `status`, `tool_call_start`, `tool_call_complete`, `tool_call_error`, `message`, `done`, `error`)
+5. Messages persisted to Honcho (fire-and-forget — silent failure on error)
 
 ## Project Structure
 
@@ -52,39 +52,34 @@ src/ralph/                      # Main application
 └── sync/                       # OpenWebUI KB sync
 
 src/youlab_server/              # Legacy Letta-based stack (deprecated)
-config/courses/                 # TOML agent definitions
-    {course}/agents.toml        # Agent, blocks, and tasks for course
+config/courses/                 # TOML agent definitions (legacy, not loaded by Ralph)
 ```
 
-## Agent Configuration (TOML)
+## Agent Lifecycle (Per-Request)
 
-Agents are defined in `config/courses/{course}/agents.toml`:
+Ralph creates a **new, ephemeral agent for every chat request**. There is no persistent agent state between messages — all continuity comes from conversation history (passed in the request) and memory blocks (persisted in Dolt).
 
-```toml
-[agent]
-name = "Essay Coach"
-model = "anthropic/claude-sonnet-4"
-system_prompt = "..."
-tools = ["file_tools", "honcho_tools", "memory_blocks"]
-blocks = ["student", "journey"]
+**Agent construction** (`server.py:291-310`):
+1. Build system prompt: base instructions + tool usage guide + CLAUDE.md (from workspace) + memory blocks
+2. Instantiate tools as Python objects (workspace-scoped):
+   - `ShellTools(base_dir=workspace)` — shell commands
+   - `HookedFileTools(base_dir=workspace, ...)` — file ops with LaTeX auto-compile
+   - `HonchoTools()` — conversation history queries
+   - `MemoryBlockTools()` — read blocks + propose edits
+3. Create `Agent(model=OpenRouter(...), tools=[...], instructions=...)`
+4. Stream response via SSE, then discard agent
 
-[[block]]
-label = "student"
-title = "Student Profile"
-template = "## About Me\n\n[To be filled in]"
+**Memory block initialization**: When a user has zero blocks, `ensure_welcome_blocks` (`memory.py:79-100`) creates all 4 default blocks at once. This only fires for brand-new users.
 
-[[task]]
-name = "weekly-review"
-trigger = { type = "cron", schedule = "0 9 * * 1" }
-system_prompt = "Review student progress..."
-tools = ["honcho_tools", "memory_blocks"]
-blocks = ["student"]
-```
+**Default memory blocks** (defined in `memory.py:15-76`):
+| Label | Title | Purpose |
+|-------|-------|---------|
+| `origin_story` | Origin Story | Who they are, goals, strengths, weaknesses |
+| `tech_relationship` | Tech Relationship | How they use technology, distraction patterns |
+| `ai_partnership` | AI Partnership | What AI should/shouldn't help with |
+| `onboarding_progress` | Current Progress | Welcome module progress tracking |
 
-**Key rules**:
-- Only one `agents.toml` can define `[[block]]` schema for a given label
-- Blocks check if user has existing content before initializing from template
-- Multiple courses can share blocks (e.g., "student") without redefining them
+> **Legacy**: `config/courses/` contains TOML agent definitions from the Letta-based stack. These files exist but are **not loaded by Ralph**. They may be resurrected as a declarative config system in the future.
 
 ## Commands
 
@@ -92,16 +87,17 @@ blocks = ["student"]
 # Setup (run once, installs deps + pre-commit hooks)
 make setup
 
-# Ralph (new stack)
+# Development (auto-reload, kills stale processes, starts Dolt)
+make dev                         # Recommended: starts Ralph with auto-reload
+./hack/dev.sh                    # Same thing, directly
+./hack/dev.sh --kill             # Stop the dev server
+
+# Production-style (no auto-reload)
 uv run ralph-server              # Start Ralph HTTP backend on port 8200
 
 # LaTeX Notes (Tectonic required for PDF generation)
 brew install tectonic            # macOS
 cargo install tectonic           # Cross-platform via Rust
-
-# Legacy (being phased out)
-uv run youlab                    # Interactive mode (requires letta server)
-uv run youlab-server             # Start YouLab HTTP service (requires letta server)
 
 # Verification (agent-optimized, minimal output)
 make verify-agent                # Full: lint + typecheck + tests
@@ -118,15 +114,50 @@ uv run basedpyright src/ralph/
 
 Pre-commit hooks run `make verify` automatically - commits are blocked if checks fail.
 
+> **Dev testing SOP**: See `docs/dev-testing.md` for full dev workflow, testing procedures, and troubleshooting.
+
+## Error Boundaries
+
+When dependencies fail, the system degrades silently. This table documents what breaks.
+
+| Component | Failure Mode | Lost | Preserved | User Sees |
+|-----------|-------------|------|-----------|-----------|
+| **Dolt** | Connection refused | Memory blocks, proposals, activity tracking, background tasks | Chat, file/shell tools | No memory context in responses |
+| **Honcho** | Import/init failure | Message persistence, dialectic queries | Everything else | Messages not saved across sessions |
+| **Honcho** | Fire-and-forget task fails | Individual message | Subsequent messages | Nothing (silent loss) |
+| **LaTeX** | Compilation failure | PDF output | File saved successfully | Error in artifact panel; **agent is unaware** |
+| **OpenRouter** | API error | Current response | System state | SSE error event |
+| **Activity tracking** | DB error | User activity timestamp | Everything else | Nothing (warning logged) |
+
 ## Environment Variables (Ralph)
 
+All settings are in `config.py` with prefix `RALPH_`. See `Settings` class for defaults.
+
 ```bash
-RALPH_OPENROUTER_API_KEY=...     # Required: OpenRouter API key
-RALPH_OPENROUTER_MODEL=anthropic/claude-sonnet-4-20250514  # Default model
-RALPH_AGENT_WORKSPACE=/path/to/workspace  # Shared workspace (optional)
+# Core (required)
+RALPH_OPENROUTER_API_KEY=...                              # OpenRouter API key
+RALPH_OPENROUTER_MODEL=anthropic/claude-sonnet-4-20250514 # Default model
+
+# Workspace
+RALPH_AGENT_WORKSPACE=/path/to/workspace  # Shared workspace (optional, overrides per-user)
 RALPH_USER_DATA_DIR=/data/ralph/users     # Per-user workspaces
+
+# Honcho
 RALPH_HONCHO_WORKSPACE_ID=ralph           # Honcho workspace
 RALPH_HONCHO_ENVIRONMENT=demo             # demo, local, or production
+RALPH_HONCHO_API_KEY=...                  # Honcho API key (optional)
+
+# Dolt
+RALPH_DOLT_HOST=localhost
+RALPH_DOLT_PORT=3307
+RALPH_DOLT_USER=root
+RALPH_DOLT_PASSWORD=devpassword
+RALPH_DOLT_DATABASE=youlab
+
+# OpenWebUI sync (optional)
+RALPH_OPENWEBUI_URL=https://...           # OpenWebUI instance URL
+RALPH_OPENWEBUI_API_KEY=...              # OpenWebUI API key
+RALPH_SYNC_TO_OPENWEBUI=true             # Enable KB sync
 ```
 
 ## Codebase Patterns
@@ -136,7 +167,8 @@ RALPH_HONCHO_ENVIRONMENT=demo             # demo, local, or production
 - The ralph package lives at `src/ralph/`
 - Run checks from the YouLab root: `make check-agent` - this runs on src/ and tests/
 - For ralph-specific checks: `uv run ruff check src/ralph/` and `uv run basedpyright src/ralph/`
-- Agno tools need `strip_agno_fields()` helper to remove fields Mistral doesn't accept
+- All Agno tool instances must be wrapped in `strip_agno_fields()` — strips `requires_confirmation` and `external_execution` fields that OpenRouter/Mistral rejects
+- Agno tools are synchronous but Dolt is async — `memory_blocks.py` uses `_run_async_with_fresh_client()` to bridge via thread pool (30s timeout)
 
 ## Task Management
 
@@ -152,10 +184,27 @@ Relationship to other systems:
 - **Linear**: Project-level planning and tracking
 - **beads**: Implementation-level task persistence
 
+## Production Server
+
+- **Host alias**: `vps` (via `~/.ssh/config`)
+- **IP**: `23.94.218.158`
+- **User**: `root`
+- **SSH Port**: 22
+- **Auth**: SSH key (`~/.ssh/id_ed25519`)
+- **Login**: `ssh vps`
+
 ## Linear
 
 Team: **Ariav** (`dd52dd50-3e8c-43c2-810f-d79c71933dc9`)
 Project: **YouLab** (`eac4c2fe-bee6-4784-9061-05aaba98409f`)
+
+## Production Users (OpenWebUI)
+
+| Name | Email | User ID |
+|------|-------|---------|
+| Ariav Asulin | ariav2002@gmail.com | `ed6d1437-7b38-47a4-bd49-670267f0a7ce` |
+| Noam Michael | noam_michael@berkeley.edu | `979fe457-9206-43b9-8ecf-0b73612cff6e` |
+| Genee | geneeramsay@gmail.com | `5003623c-cb9c-4252-89b7-68279e59583b` |
 
 ## Testing Memory Blocks (Dolt)
 
@@ -187,10 +236,10 @@ WHERE user_id = '7a41011b-5255-4225-b75e-1d8484d0e37f';
 REPLACE INTO memory_blocks (user_id, label, title, body, schema_ref, updated_at)
 VALUES (
   '7a41011b-5255-4225-b75e-1d8484d0e37f',
-  'student',
-  'Student Profile',
-  '## About Me\n\nTest content here...',
-  'college-essay/student',
+  'origin_story',
+  'Origin Story',
+  '## Who I Am At My Best\n\nTest content here...',
+  NULL,
   NOW()
 );
 
@@ -209,33 +258,33 @@ BASE_URL="http://localhost:8200"
 curl -s "$BASE_URL/users/$USER_ID/blocks" | jq .
 
 # Get single block
-curl -s "$BASE_URL/users/$USER_ID/blocks/student" | jq .
+curl -s "$BASE_URL/users/$USER_ID/blocks/origin_story" | jq .
 
 # Get pending diffs
-curl -s "$BASE_URL/users/$USER_ID/blocks/student/diffs" | jq .
+curl -s "$BASE_URL/users/$USER_ID/blocks/origin_story/diffs" | jq .
 ```
 
 ### Creating Proposals (Agent Diffs)
 
-Proposals simulate what agents do when they want to update a memory block. The user must approve/reject them in the UI.
+Proposals simulate what agents do when they want to update a memory block. The user must approve/reject them in the UI. Proposals are stored as Dolt branches named `agent/{user_id}/{label}`.
 
 ```bash
 # Create a proposal (simulates agent suggesting a change)
-curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/student/propose" \
+curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/origin_story/propose" \
   -H "Content-Type: application/json" \
   -d '{
-    "body": "## About Me\n\nUpdated content with new information...",
+    "body": "## Who I Am At My Best\n\nUpdated content with new information...",
     "agent_id": "tutor-agent",
     "reasoning": "Student mentioned new interests during conversation",
     "confidence": "high"
   }' | jq .
 
-# Approve a proposal (apply the change)
-DIFF_ID="agent__7a41011b-5255-4225-b75e-1d8484d0e37f__student"
-curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/student/diffs/$DIFF_ID/approve" | jq .
+# Approve a proposal (apply the change — merges branch to main, deletes branch)
+DIFF_ID="agent__7a41011b-5255-4225-b75e-1d8484d0e37f__origin_story"
+curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/origin_story/diffs/$DIFF_ID/approve" | jq .
 
-# Reject a proposal (discard the change)
-curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/student/diffs/$DIFF_ID/reject" | jq .
+# Reject a proposal (discard — force-deletes the branch)
+curl -s -X POST "$BASE_URL/users/$USER_ID/blocks/origin_story/diffs/$DIFF_ID/reject" | jq .
 ```
 
 ### Viewing Dolt Branches (Proposals)

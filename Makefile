@@ -1,12 +1,13 @@
 # Makefile for YouLab
 # All commands use uv for dependency management
 
-.PHONY: help setup lint lint-fix typecheck test test-agent check check-agent verify verify-agent coverage coverage-html clean
+.PHONY: help setup dev lint lint-fix typecheck test test-agent check check-agent verify verify-agent coverage coverage-html clean
 
 help:
 	@echo "YouLab Development Commands"
 	@echo ""
 	@echo "  setup        Install dependencies and configure dev environment"
+	@echo "  dev          Start Ralph dev server with auto-reload"
 	@echo "  lint         Run ruff linter (check mode)"
 	@echo "  lint-fix     Run ruff with auto-fix"
 	@echo "  typecheck    Run basedpyright type checker"
@@ -19,6 +20,9 @@ help:
 	@echo "  coverage     Run tests with coverage report"
 	@echo "  coverage-html Generate HTML coverage report"
 	@echo "  clean        Remove cache directories"
+
+dev:
+	@./hack/dev.sh
 
 setup:
 	uv sync --all-extras
