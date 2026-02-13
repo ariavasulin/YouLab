@@ -15,7 +15,7 @@ dependencies = [
     "uvicorn>=0.32.0",
     "httpx-sse>=0.4.0,<0.5.0",
     "honcho-ai>=1.6.0,<2.0.0",
-    "honcho-core>=1.6.1,<1.11.0",  # 1.11.0 removed DeriverStatus, breaking honcho-ai 1.6.x
+    "honcho-core>=1.8.0,<1.9.0",  # >=1.9.0 removed DeriverStatus, breaking honcho-ai 1.6.x
     "aiofiles>=24.1.0",  # Async file operations (workspace sync)
     # Ralph (Agno-based)
     "agno>=1.4.5",
