@@ -13,8 +13,14 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 import uvicorn
-from agno.agent import Agent
+from agno.agent import (
+    Agent,
+    RunContentEvent,
+    ToolCallCompletedEvent,
+    ToolCallStartedEvent,
+)
 from agno.models.openrouter import OpenRouter
+from agno.run.agent import IntermediateRunContentEvent, ToolCallErrorEvent
 from agno.tools.shell import ShellTools
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -347,6 +353,7 @@ Now, the user says:
             async for chunk in agent.arun(
                 prompt,
                 stream=True,
+                stream_events=True,
                 user_id=request.user_id,
                 session_id=request.chat_id,
                 dependencies={
@@ -354,53 +361,58 @@ Now, the user says:
                     "chat_id": request.chat_id,
                 },
             ):
-                # Emit tool call and reasoning events as status updates
-                event_type = getattr(chunk, "event", None)
-                log.info("stream_chunk", event_type=event_type, has_content=bool(chunk.content))
-
-                # Skip terminal/summary events — they contain duplicate full content
-                if event_type in (
-                    "RunCompleted",
-                    "RunStarted",
-                    "RunContentCompleted",
-                ):
-                    continue
-
-                if event_type == "ToolCallStarted":
-                    tool = getattr(chunk, "tool", None)
-                    if tool:
-                        tool_name = getattr(tool, "tool_name", None) or "tool"
-                        yield {
-                            "event": "message",
-                            "data": json.dumps(
-                                {"type": "tool_call", "name": tool_name, "status": "started"}
-                            ),
-                        }
-                elif event_type == "ToolCallCompleted":
-                    tool = getattr(chunk, "tool", None)
-                    if tool:
-                        tool_name = getattr(tool, "tool_name", None) or "tool"
-                        yield {
-                            "event": "message",
-                            "data": json.dumps(
-                                {"type": "tool_call", "name": tool_name, "status": "completed"}
-                            ),
-                        }
-                elif event_type == "ReasoningContentDelta":
-                    reasoning = getattr(chunk, "reasoning_content", None)
-                    if reasoning:
-                        yield {
-                            "event": "message",
-                            "data": json.dumps({"type": "reasoning", "content": reasoning}),
-                        }
-
-                content = chunk.content
-                if content:
-                    response_chunks.append(content)
+                if isinstance(chunk, ToolCallStartedEvent) and chunk.tool:
                     yield {
                         "event": "message",
-                        "data": json.dumps({"type": "message", "content": content}),
+                        "data": json.dumps(
+                            {
+                                "type": "tool_call_start",
+                                "tool_call_id": chunk.tool.tool_call_id or f"call_{id(chunk)}",
+                                "tool_name": chunk.tool.tool_name or "unknown",
+                                "tool_args": chunk.tool.tool_args or {},
+                            }
+                        ),
                     }
+                elif isinstance(chunk, ToolCallCompletedEvent) and chunk.tool:
+                    result = chunk.tool.result or chunk.content or ""
+                    max_result_len = 2000
+                    display_result = (
+                        str(result)[:max_result_len] + "..."
+                        if len(str(result)) > max_result_len
+                        else str(result)
+                    )
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(
+                            {
+                                "type": "tool_call_complete",
+                                "tool_call_id": chunk.tool.tool_call_id or "",
+                                "tool_name": chunk.tool.tool_name or "unknown",
+                                "tool_args": chunk.tool.tool_args or {},
+                                "result": display_result,
+                            }
+                        ),
+                    }
+                elif isinstance(chunk, ToolCallErrorEvent):
+                    yield {
+                        "event": "message",
+                        "data": json.dumps(
+                            {
+                                "type": "tool_call_error",
+                                "tool_call_id": chunk.tool.tool_call_id if chunk.tool else "",
+                                "tool_name": chunk.tool.tool_name if chunk.tool else "unknown",
+                                "error": chunk.error or "Unknown error",
+                            }
+                        ),
+                    }
+                elif isinstance(chunk, (RunContentEvent, IntermediateRunContentEvent)):
+                    content = chunk.content
+                    if content and isinstance(content, str):
+                        response_chunks.append(content)
+                        yield {
+                            "event": "message",
+                            "data": json.dumps({"type": "message", "content": content}),
+                        }
 
             yield {"event": "message", "data": json.dumps({"type": "done"})}
 
