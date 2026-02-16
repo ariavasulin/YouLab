@@ -18,7 +18,6 @@ from ralph.background.models import (
     RunStatus,
     TaskRun,
     TriggerType,
-    UserActivity,
     UserRunResult,
 )
 from ralph.config import Settings, get_settings
@@ -102,10 +101,6 @@ class DoltClient:
         async with self._session_factory() as sess:
             yield sess
 
-    # -------------------------------------------------------------------------
-    # Memory Block Operations (on main branch)
-    # -------------------------------------------------------------------------
-
     async def list_blocks(self, user_id: str) -> list[MemoryBlock]:
         """List all memory blocks for a user."""
         async with self.session() as session:
@@ -162,7 +157,6 @@ class DoltClient:
     ) -> str:
         """Update a memory block and commit. Returns commit hash."""
         async with self.session() as session:
-            # Upsert the block
             await session.execute(
                 text("""
                     INSERT INTO memory_blocks (user_id, label, title, body, schema_ref)
@@ -182,7 +176,6 @@ class DoltClient:
             )
             await session.commit()
 
-            # Dolt commit with author attribution
             commit_msg = message or f"Update {label}"
             author_str = f"{author} <{author}@youlab>"
 
@@ -214,10 +207,6 @@ class DoltClient:
             row = result.fetchone()
             return row[0] if row else None
 
-    # -------------------------------------------------------------------------
-    # Version History Operations
-    # -------------------------------------------------------------------------
-
     async def get_block_history(
         self,
         user_id: str,
@@ -226,7 +215,6 @@ class DoltClient:
     ) -> list[VersionInfo]:
         """Get version history for a block."""
         async with self.session() as session:
-            # Query dolt_history_memory_blocks for this specific block
             result = await session.execute(
                 text("""
                     SELECT DISTINCT
@@ -243,7 +231,6 @@ class DoltClient:
 
             versions = []
             for i, row in enumerate(result.fetchall()):
-                # Get commit message from dolt_log
                 log_result = await session.execute(
                     text("SELECT message FROM dolt_log WHERE commit_hash = :hash LIMIT 1"),
                     {"hash": row.commit_hash},
@@ -315,10 +302,6 @@ class DoltClient:
             message=f"Restore {label} to {commit_hash[:8]}",
         )
 
-    # -------------------------------------------------------------------------
-    # Proposal Operations (Branch-based approval workflow)
-    # -------------------------------------------------------------------------
-
     def _proposal_branch_name(self, user_id: str, block_label: str) -> str:
         """Generate branch name for a proposal."""
         return f"agent/{user_id}/{block_label}"
@@ -347,7 +330,6 @@ class DoltClient:
         branch_name = self._proposal_branch_name(user_id, block_label)
 
         async with self.session() as session:
-            # Check if branch already exists
             result = await session.execute(
                 text("SELECT name FROM dolt_branches WHERE name = :name"),
                 {"name": branch_name},
@@ -355,20 +337,18 @@ class DoltClient:
             branch_exists = result.fetchone() is not None
 
             if branch_exists:
-                # Switch to existing proposal branch (append to it)
                 await session.execute(
                     text("CALL DOLT_CHECKOUT(:branch)"),
                     {"branch": branch_name},
                 )
             else:
-                # Create new branch from main
                 await session.execute(
                     text("CALL DOLT_CHECKOUT('-b', :branch)"),
                     {"branch": branch_name},
                 )
 
             try:
-                # Make the proposed edit (body only, preserve other fields)
+                # Body only — preserve other fields
                 await session.execute(
                     text("""
                         UPDATE memory_blocks
@@ -383,7 +363,6 @@ class DoltClient:
                 )
                 await session.commit()
 
-                # Commit with metadata in message
                 metadata = json.dumps(
                     {
                         "agent_id": agent_id,
@@ -403,7 +382,6 @@ class DoltClient:
                     },
                 )
             finally:
-                # Always switch back to main
                 await session.execute(text("CALL DOLT_CHECKOUT('main')"))
 
         return branch_name
@@ -423,7 +401,6 @@ class DoltClient:
                 branch_name = row.name
                 block_label = branch_name.replace(prefix, "")
 
-                # Get commit info from the branch using dolt_log table function
                 log_result = await session.execute(
                     text(
                         "SELECT message, committer, date FROM dolt_log(:branch, '--parents') LIMIT 1"
@@ -457,7 +434,6 @@ class DoltClient:
         branch_name = self._proposal_branch_name(user_id, block_label)
 
         async with self.session() as session:
-            # Check branch exists
             result = await session.execute(
                 text("SELECT name FROM dolt_branches WHERE name = :name"),
                 {"name": branch_name},
@@ -465,7 +441,6 @@ class DoltClient:
             if not result.fetchone():
                 return None
 
-            # Get diff between main and proposal branch
             result = await session.execute(
                 text("""
                     SELECT * FROM dolt_diff('main', :branch, 'memory_blocks')
@@ -477,7 +452,6 @@ class DoltClient:
             if not row:
                 return None
 
-            # Get proposal metadata from the latest commit on the branch
             log_result = await session.execute(
                 text("SELECT message, date FROM dolt_log(:branch, '--parents') LIMIT 1"),
                 {"branch": branch_name},
@@ -501,7 +475,6 @@ class DoltClient:
         branch_name = self._proposal_branch_name(user_id, block_label)
 
         async with self.session() as session:
-            # Get proposal metadata for commit message
             log_result = await session.execute(
                 text("SELECT message FROM dolt_log(:branch, '--parents') LIMIT 1"),
                 {"branch": branch_name},
@@ -510,7 +483,6 @@ class DoltClient:
             metadata = self._parse_proposal_metadata(log_row.message) if log_row else {}
             reasoning = metadata.get("reasoning", "No reasoning provided")
 
-            # Merge the branch
             result = await session.execute(
                 text("CALL DOLT_MERGE(:branch, '-m', :message)"),
                 {
@@ -521,7 +493,6 @@ class DoltClient:
             merge_result = result.fetchone()
             commit_hash = merge_result[0] if merge_result else "unknown"
 
-            # Delete the branch
             await session.execute(
                 text("CALL DOLT_BRANCH('-d', :branch)"),
                 {"branch": branch_name},
@@ -556,10 +527,6 @@ class DoltClient:
                 {"prefix": f"{prefix}%"},
             )
             return result.scalar() or 0
-
-    # -------------------------------------------------------------------------
-    # Background Task Operations
-    # -------------------------------------------------------------------------
 
     async def create_task(self, task: BackgroundTask) -> None:
         """Create or update a background task definition."""
@@ -661,10 +628,6 @@ class DoltClient:
             max_turns=row.max_turns,
             enabled=bool(row.enabled),
         )
-
-    # -------------------------------------------------------------------------
-    # Task Run Operations
-    # -------------------------------------------------------------------------
 
     async def create_task_run(self, run: TaskRun) -> None:
         """Create a task run record."""
@@ -790,10 +753,6 @@ class DoltClient:
             error=row.error,
         )
 
-    # -------------------------------------------------------------------------
-    # User Activity Operations
-    # -------------------------------------------------------------------------
-
     async def update_user_activity(self, user_id: str, message_time: datetime) -> None:
         """Update user's last message time."""
         async with self.session() as session:
@@ -812,7 +771,6 @@ class DoltClient:
     ) -> None:
         """Record when a task was last run for a user."""
         async with self.session() as session:
-            # Get current task runs
             result = await session.execute(
                 text("SELECT last_task_runs FROM user_activity WHERE user_id = :user_id"),
                 {"user_id": user_id},
@@ -860,27 +818,7 @@ class DoltClient:
 
             return eligible_users
 
-    async def get_user_activity(self, user_id: str) -> UserActivity | None:
-        """Get activity record for a user."""
-        async with self.session() as session:
-            result = await session.execute(
-                text("SELECT * FROM user_activity WHERE user_id = :user_id"),
-                {"user_id": user_id},
-            )
-            row = result.fetchone()
-            if not row:
-                return None
-            return UserActivity(
-                user_id=row.user_id,
-                last_message_at=row.last_message_at,
-                last_task_run_at={
-                    k: datetime.fromisoformat(v)
-                    for k, v in json.loads(row.last_task_runs or "{}").items()
-                },
-            )
 
-
-# Module-level singleton
 _client: DoltClient | None = None
 
 

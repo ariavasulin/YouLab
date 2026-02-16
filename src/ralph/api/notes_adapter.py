@@ -26,13 +26,7 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 router = APIRouter(prefix="/you/notes", tags=["notes-adapter"])
 
-# Type alias for dependency injection
 DoltDep = Annotated[DoltClient, Depends(get_dolt_client)]
-
-
-# =============================================================================
-# Pydantic Models (OpenWebUI Notes API compatible)
-# =============================================================================
 
 
 class NoteContent(BaseModel):
@@ -58,8 +52,8 @@ class NoteVersion(BaseModel):
     html: str = ""
     md: str = ""
     sha: str = ""  # Dolt commit hash
-    message: str = ""  # Commit message
-    timestamp: str = ""  # ISO timestamp
+    message: str = ""
+    timestamp: str = ""
 
 
 class NoteData(BaseModel):
@@ -108,11 +102,6 @@ class NoteForm(BaseModel):
     access_control: dict[str, Any] | None = None
 
 
-# =============================================================================
-# Helper Functions
-# =============================================================================
-
-
 def _md_to_html(md_content: str) -> str:
     """
     Simple markdown to HTML conversion.
@@ -120,9 +109,7 @@ def _md_to_html(md_content: str) -> str:
     For now, just wraps in a div. Could use markdown library for proper
     conversion if TipTap needs rendered HTML.
     """
-    # Basic HTML escaping and paragraph conversion
     html = md_content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    # Convert newlines to paragraphs
     paragraphs = html.split("\n\n")
     if len(paragraphs) > 1:
         html = "".join(f"<p>{p}</p>" for p in paragraphs if p.strip())
@@ -179,12 +166,10 @@ async def _get_user_id_from_request(request: Request) -> str:
     User ID comes via X-User-Id header set by OpenWebUI.
     Falls back to Bearer token extraction if needed.
     """
-    # Try X-User-Id header first (YouLab convention)
     user_id = request.headers.get("X-User-Id")
     if user_id:
         return user_id
 
-    # Try Authorization header as fallback
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header.replace("Bearer ", "")
@@ -194,11 +179,6 @@ async def _get_user_id_from_request(request: Request) -> str:
         return token[:uuid_length] if len(token) >= uuid_length else token
 
     raise HTTPException(status_code=401, detail="User authentication required")
-
-
-# =============================================================================
-# Endpoints
-# =============================================================================
 
 
 @router.get("/", response_model=list[NoteItemResponse])
@@ -242,13 +222,10 @@ async def get_note_by_id(
     if not block:
         raise HTTPException(status_code=404, detail=f"Note {note_id} not found")
 
-    # Get version history
     history = await dolt.get_block_history(user_id, note_id, limit=20)
 
-    # Convert versions - we need to get content for each version
     versions = []
     for version in history:
-        # Get the block content at this specific version
         version_block = await dolt.get_block_at_version(user_id, note_id, version.commit_hash)
         version_body = version_block.body if version_block else ""
         versions.append(_version_to_note_version(version, version_body))
@@ -266,12 +243,10 @@ async def update_note_by_id(
     """Update a memory block via notes API."""
     user_id = await _get_user_id_from_request(request)
 
-    # Check block exists
     existing = await dolt.get_block(user_id, note_id)
     if not existing:
         raise HTTPException(status_code=404, detail=f"Note {note_id} not found")
 
-    # Extract markdown content from form_data
     md_content = ""
     if form_data.data and "content" in form_data.data:
         content_data = form_data.data["content"]
@@ -281,7 +256,6 @@ async def update_note_by_id(
     if not md_content:
         raise HTTPException(status_code=400, detail="No markdown content provided")
 
-    # Update the block
     await dolt.update_block(
         user_id=user_id,
         label=note_id,
@@ -291,7 +265,6 @@ async def update_note_by_id(
         message=f"Update {note_id}",
     )
 
-    # Return updated note with fresh version history
     block = await dolt.get_block(user_id, note_id)
     if not block:
         raise HTTPException(status_code=500, detail="Failed to fetch updated block")

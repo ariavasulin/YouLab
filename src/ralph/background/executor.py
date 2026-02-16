@@ -41,18 +41,7 @@ class BackgroundExecutor:
         trigger_type: TriggerType,
         user_ids: list[str] | None = None,
     ) -> TaskRun:
-        """
-        Execute a background task for specified users.
-
-        Args:
-            task: The task definition
-            trigger_type: What triggered this run
-            user_ids: Override user list (defaults to task.user_ids)
-
-        Returns:
-            TaskRun with results for all users
-
-        """
+        """Execute a background task for specified users."""
         run_id = str(uuid.uuid4())
         users_to_process = user_ids or task.user_ids
 
@@ -65,7 +54,6 @@ class BackgroundExecutor:
             user_results=[],
         )
 
-        # Persist initial run record
         await self._dolt.create_task_run(run)
 
         log.info(
@@ -77,16 +65,13 @@ class BackgroundExecutor:
         )
 
         try:
-            # Process users in batches
             for i in range(0, len(users_to_process), task.batch_size):
                 batch = users_to_process[i : i + task.batch_size]
                 batch_results = await self._process_batch(task, batch)
                 run.user_results.extend(batch_results)
 
-                # Update run record after each batch
                 await self._dolt.update_task_run(run)
 
-            # Determine final status
             statuses = {r.status for r in run.user_results}
             if statuses == {RunStatus.SUCCESS}:
                 run.status = RunStatus.SUCCESS
@@ -132,22 +117,18 @@ class BackgroundExecutor:
         log.info("user_run_started", task_name=task.name, user_id=user_id)
 
         try:
-            # Build memory context for this user
             memory_context = ""
             if task.memory_blocks:
                 memory_context = await build_memory_context(
                     self._dolt, user_id, labels=task.memory_blocks
                 )
 
-            # Build instructions
             instructions = task.system_prompt
             if memory_context:
                 instructions += f"\n\n---\n\n# Student Context\n\n{memory_context}"
 
-            # Create tools for this user
             tools = create_tools_for_task(task.tools, user_id)
 
-            # Create agent
             agent = Agent(
                 model=OpenRouter(
                     id=self._settings.openrouter_model,
@@ -158,8 +139,6 @@ class BackgroundExecutor:
                 markdown=True,
             )
 
-            # Run agent (streaming, let it iterate)
-            # The agent will make tool calls and reason through the task
             turns_used = 0
             async for _chunk in agent.arun(
                 "Execute your background task now. Review the student context and take "
@@ -176,7 +155,6 @@ class BackgroundExecutor:
                     )
                     break
 
-            # Record that this task ran for this user
             await self._dolt.record_task_run_for_user(user_id, task.name, datetime.now(UTC))
 
             log.info(

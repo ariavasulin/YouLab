@@ -7,9 +7,9 @@ Provides endpoints for the local daemon (Phase 2) to sync files with Ralph works
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from ralph.config import get_settings
@@ -18,9 +18,6 @@ from ralph.sync.openwebui_client import OpenWebUIClient
 from ralph.sync.workspace_sync import WorkspaceSync
 
 router = APIRouter(prefix="/users/{user_id}/workspace", tags=["workspace"])
-
-
-# Request/Response Models
 
 
 class FileMetadataResponse(BaseModel):
@@ -37,16 +34,11 @@ class SyncRequest(BaseModel):
     direction: Literal["to_openwebui", "from_openwebui", "bidirectional"] = "bidirectional"
 
 
-# Dependencies
-
-
 def get_workspace_path(user_id: str) -> Path:
     """Get workspace directory for a user."""
     settings = get_settings()
     if settings.agent_workspace:
-        # Shared workspace (e.g., a codebase)
         return Path(settings.agent_workspace)
-    # Per-user isolated workspace
     workspace = Path(settings.user_data_dir) / user_id / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
     return workspace
@@ -63,42 +55,12 @@ def get_openwebui_client() -> OpenWebUIClient | None:
     )
 
 
-async def get_workspace_sync(user_id: str) -> WorkspaceSync:
-    """Get workspace sync service for a user."""
-    workspace_path = get_workspace_path(user_id)
-    openwebui_client = get_openwebui_client()
-    sync = WorkspaceSync(
-        workspace_path=workspace_path,
-        user_id=user_id,
-        openwebui_client=openwebui_client,
-    )
-    await sync.load_state()
-    return sync
-
-
-# Type alias for dependency
-WorkspaceSyncDep = Annotated[WorkspaceSync, Depends(get_workspace_sync)]
-
-
-# Endpoints
-
-
 @router.get("/files", response_model=WorkspaceIndex)
 async def list_workspace_files(
     user_id: str,
     refresh: bool = False,
 ) -> WorkspaceIndex:
-    """
-    List all files in workspace with hashes.
-
-    Args:
-        user_id: User ID.
-        refresh: If True, rescan workspace before returning.
-
-    Returns:
-        Workspace file index.
-
-    """
+    """List all files in workspace with hashes."""
     workspace_path = get_workspace_path(user_id)
     sync = WorkspaceSync(workspace_path=workspace_path, user_id=user_id)
 
@@ -122,17 +84,7 @@ async def get_workspace_file(
     user_id: str,
     path: str,
 ) -> Response:
-    """
-    Download file content.
-
-    Args:
-        user_id: User ID.
-        path: File path within workspace.
-
-    Returns:
-        File content as bytes.
-
-    """
+    """Download file content."""
     workspace_path = get_workspace_path(user_id)
     sync = WorkspaceSync(workspace_path=workspace_path, user_id=user_id)
 
@@ -143,7 +95,6 @@ async def get_workspace_file(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    # Guess content type from extension
     suffix = Path(path).suffix.lower()
     content_type_map = {
         ".txt": "text/plain",
@@ -174,22 +125,10 @@ async def put_workspace_file(
     path: str,
     request: Request,
 ) -> FileMetadataResponse:
-    """
-    Upload/update file in workspace.
-
-    Args:
-        user_id: User ID.
-        path: File path within workspace.
-        request: Request with file content in body.
-
-    Returns:
-        Updated file metadata.
-
-    """
+    """Upload/update file in workspace."""
     workspace_path = get_workspace_path(user_id)
     sync = WorkspaceSync(workspace_path=workspace_path, user_id=user_id)
 
-    # Read content from request body
     content = await request.body()
 
     if not content:
@@ -212,17 +151,7 @@ async def delete_workspace_file(
     user_id: str,
     path: str,
 ) -> dict[str, bool]:
-    """
-    Delete file from workspace.
-
-    Args:
-        user_id: User ID.
-        path: File path within workspace.
-
-    Returns:
-        Deletion confirmation.
-
-    """
+    """Delete file from workspace."""
     workspace_path = get_workspace_path(user_id)
     sync = WorkspaceSync(workspace_path=workspace_path, user_id=user_id)
 
@@ -242,17 +171,7 @@ async def trigger_sync(
     user_id: str,
     sync_request: SyncRequest,
 ) -> SyncResult:
-    """
-    Trigger workspace sync with OpenWebUI.
-
-    Args:
-        user_id: User ID.
-        sync_request: Sync direction configuration.
-
-    Returns:
-        Sync result with counts and errors.
-
-    """
+    """Trigger workspace sync with OpenWebUI."""
     workspace_path = get_workspace_path(user_id)
     openwebui_client = get_openwebui_client()
 
@@ -285,7 +204,6 @@ async def trigger_sync(
         if not from_result.success:
             result.success = False
 
-    # Close OpenWebUI client
     await openwebui_client.close()
 
     return result

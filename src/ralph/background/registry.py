@@ -36,14 +36,7 @@ class TaskRegistry:
             log.info("task_loaded", name=task.name, enabled=task.enabled)
 
     async def register(self, task: BackgroundTask, persist: bool = True) -> None:
-        """
-        Register a background task.
-
-        Args:
-            task: The task definition
-            persist: If True, save to Dolt database
-
-        """
+        """Register a background task."""
         self._tasks[task.name] = task
         log.info(
             "task_registered",
@@ -82,10 +75,6 @@ class TaskRegistry:
         """List all registered tasks."""
         return list(self._tasks.values())
 
-    def list_enabled(self) -> list[BackgroundTask]:
-        """List only enabled tasks."""
-        return [t for t in self._tasks.values() if t.enabled]
-
     def list_cron_tasks(self) -> list[BackgroundTask]:
         """List enabled tasks with cron triggers."""
         return [t for t in self._tasks.values() if t.enabled and isinstance(t.trigger, CronTrigger)]
@@ -100,7 +89,6 @@ class TaskRegistry:
         if not task:
             return False
 
-        # Create new task with updated enabled status
         updated_task = BackgroundTask(
             name=task.name,
             system_prompt=task.system_prompt,
@@ -116,7 +104,6 @@ class TaskRegistry:
         return True
 
 
-# Module-level singleton
 _registry: TaskRegistry | None = None
 
 

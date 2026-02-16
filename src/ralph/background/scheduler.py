@@ -86,7 +86,6 @@ class BackgroundScheduler:
         """Check all triggers and dispatch tasks as needed."""
         now = datetime.now(UTC)
 
-        # Check cron tasks
         for task in self._registry.list_cron_tasks():
             if await self._should_run_cron(task.name, task.trigger, now):  # type: ignore[arg-type]
                 log.info("cron_trigger_fired", task_name=task.name)
@@ -95,21 +94,17 @@ class BackgroundScheduler:
                 )
                 self._last_cron_check[task.name] = now
 
-        # Check idle tasks
         for task in self._registry.list_idle_tasks():
             trigger = task.trigger
             if not isinstance(trigger, IdleTrigger):
                 continue
 
-            # Find users who are idle and not in cooldown
-            # Only consider users in the task's user_ids list
             idle_users = await self._dolt.get_users_idle_for(
                 minutes=trigger.idle_minutes,
                 task_name=task.name,
                 cooldown_minutes=trigger.cooldown_minutes,
             )
 
-            # Filter to only users in this task's list
             eligible_users = [u for u in idle_users if u in task.user_ids]
 
             if eligible_users:
@@ -134,33 +129,15 @@ class BackgroundScheduler:
         last_check = self._last_cron_check.get(task_name)
 
         if last_check is None:
-            # First check - initialize but don't run immediately
             self._last_cron_check[task_name] = now
             return False
 
-        # Check if cron would have fired between last check and now
         cron = croniter(trigger.schedule, last_check)
         next_run = cron.get_next(datetime)
 
         return next_run <= now
 
-    async def run_task_now(self, task_name: str) -> str | None:
-        """
-        Manually trigger a task to run immediately.
 
-        Returns the run ID if task found, None otherwise.
-        """
-        task = self._registry.get(task_name)
-        if not task:
-            log.warning("manual_trigger_task_not_found", task_name=task_name)
-            return None
-
-        log.info("manual_trigger_fired", task_name=task_name)
-        run = await self._executor.execute_task(task, TriggerType.CRON)  # Use CRON for manual
-        return run.id
-
-
-# Module-level singleton
 _scheduler: BackgroundScheduler | None = None
 
 

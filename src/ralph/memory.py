@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-# Welcome course block templates (from welcome.toml)
 WELCOME_BLOCK_TEMPLATES: list[dict[str, str]] = [
     {
         "label": "origin_story",
@@ -105,21 +104,9 @@ async def build_memory_context(
     user_id: str,
     labels: list[str] | None = None,
 ) -> str:
-    """
-    Build memory context string for agent instructions.
-
-    Args:
-        dolt: DoltClient instance for database access
-        user_id: The user ID to fetch memory blocks for
-        labels: Optional list of block labels to include (None = all)
-
-    Returns:
-        A formatted markdown string with memory blocks, or empty string if none.
-
-    """
+    """Build memory context string for agent instructions."""
     blocks = await dolt.list_blocks(user_id)
 
-    # Filter by labels if specified
     if labels:
         blocks = [b for b in blocks if b.label in labels]
 
@@ -134,26 +121,3 @@ async def build_memory_context(
         sections.append(f"### {title} (label: `{block.label}`)\n\n{body}\n")
 
     return "\n".join(sections)
-
-
-async def get_block_for_agent(
-    dolt: DoltClient,
-    user_id: str,
-    label: str,
-) -> str | None:
-    """
-    Get a specific block's content for agent use.
-
-    Args:
-        dolt: DoltClient instance for database access
-        user_id: The user ID to fetch the block for
-        label: The block label (e.g., "student", "journey")
-
-    Returns:
-        The block body content, or None if not found.
-
-    """
-    block = await dolt.get_block(user_id, label)
-    if not block:
-        return None
-    return block.body

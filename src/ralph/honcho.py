@@ -132,7 +132,6 @@ class HonchoClient:
             return None
 
 
-# Singleton instance
 _honcho: HonchoClient | None = None
 
 

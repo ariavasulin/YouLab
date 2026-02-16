@@ -26,9 +26,6 @@ log = structlog.get_logger()
 router = APIRouter(prefix="/background", tags=["background"])
 
 
-# Request/Response Models
-
-
 class CronTriggerRequest(BaseModel):
     """Cron trigger configuration."""
 
@@ -105,9 +102,6 @@ class RunTaskResponse(BaseModel):
     message: str
 
 
-# Helper functions
-
-
 def task_to_response(task: BackgroundTask) -> TaskResponse:
     """Convert BackgroundTask to response model."""
     if isinstance(task.trigger, CronTrigger):
@@ -134,9 +128,6 @@ def task_to_response(task: BackgroundTask) -> TaskResponse:
     )
 
 
-# Endpoints
-
-
 @router.get("/tasks", response_model=list[TaskResponse])
 async def list_tasks() -> list[TaskResponse]:
     """List all registered background tasks."""
@@ -157,7 +148,6 @@ async def get_task(name: str) -> TaskResponse:
 @router.post("/tasks", response_model=TaskResponse)
 async def create_task(request: CreateTaskRequest) -> TaskResponse:
     """Create or update a background task."""
-    # Convert trigger
     trigger: CronTrigger | IdleTrigger
     if request.trigger.type == "cron":
         if not isinstance(request.trigger, CronTriggerRequest):
@@ -235,7 +225,6 @@ async def run_task(name: str) -> RunTaskResponse:
     dolt = await get_dolt_client()
     executor = BackgroundExecutor(dolt)
 
-    # Run synchronously for manual triggers (caller waits for completion)
     run = await executor.execute_task(task, TriggerType.CRON)
 
     return RunTaskResponse(

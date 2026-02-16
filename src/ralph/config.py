@@ -26,16 +26,9 @@ class Settings(BaseSettings):
 
     # Workspace paths
     user_data_dir: str = "/data/ralph/users"
-    conversations_dir: str = "/data/ralph/conversations"
 
     # Agent workspace - where the agent operates (can be a shared codebase)
     agent_workspace: str | None = None  # If set, all users share this workspace
-
-    # Docker sandbox
-    sandbox_base_image: str = "nikolaik/python-nodejs:python3.12-nodejs22"
-    sandbox_timeout: int = 300  # 5 minutes
-    use_docker_sandbox: bool = False
-    sandbox_port_base: int = 9000
 
     # Dolt database settings
     dolt_host: str = "localhost"

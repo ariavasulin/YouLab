@@ -61,10 +61,10 @@ verify-agent:
 	@./hack/verify-agent.sh
 
 coverage:
-	uv run pytest --cov=src/youlab_server --cov-report=term-missing
+	uv run pytest --cov=src/ralph --cov-report=term-missing
 
 coverage-html:
-	uv run pytest --cov=src/youlab_server --cov-report=html
+	uv run pytest --cov=src/ralph --cov-report=html
 	@echo "Coverage report generated in htmlcov/index.html"
 
 clean:

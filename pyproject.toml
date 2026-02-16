@@ -29,16 +29,6 @@ dependencies = [
     "croniter>=2.0.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=4.1.0",
-    "ruff>=0.4.0",
-    "basedpyright>=1.22.0",
-    "pre-commit>=3.7",
-]
-
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
@@ -49,18 +39,8 @@ dev = [
     "pre-commit>=3.7",
     "websockets>=15.0.1",
 ]
-legacy = [
-    # Letta-based stack (being phased out)
-    "letta>=0.6.0",
-    "langfuse>=2.0.0",
-    "gitpython>=3.1.0",
-    "tomli-w>=1.0.0",
-    "markdown>=3.5",
-]
 
 [project.scripts]
-youlab = "youlab_server.main:main"
-youlab-server = "youlab_server.server.cli:main"
 ralph-server = "ralph.server:main"
 
 [build-system]
@@ -68,7 +48,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/youlab_server", "src/ralph"]
+packages = ["src/ralph"]
 
 [tool.ruff]
 line-length = 100
@@ -145,7 +125,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["youlab_server", "ralph"]
+known-first-party = ["ralph"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = [
@@ -159,7 +139,7 @@ known-first-party = ["youlab_server", "ralph"]
 [tool.basedpyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
-include = ["src/youlab_server", "tests", "src/ralph"]
+include = ["tests", "src/ralph"]
 exclude = [".venv", "__pycache__", "OpenWebUI"]
 # Ignore missing imports/stubs for external libraries (letta, langfuse)
 reportMissingImports = false
@@ -175,13 +155,13 @@ reportAttributeAccessIssue = false
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = [
-    "--cov=src/youlab_server",
+    "--cov=src/ralph",
     "--cov-branch",
     "--cov-report=term-missing",
 ]
 
 [tool.coverage.run]
-source = ["src/youlab_server"]
+source = ["src/ralph"]
 branch = true
 omit = [
     "*/tests/*",

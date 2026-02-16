@@ -13,7 +13,6 @@ from ralph.dolt import DoltClient, get_dolt_client
 router = APIRouter(prefix="/users/{user_id}/blocks", tags=["blocks"])
 
 
-# Request/Response Models
 class BlockResponse(BaseModel):
     """Memory block response."""
 
@@ -24,12 +23,6 @@ class BlockResponse(BaseModel):
     schema_ref: str | None
     updated_at: datetime
     pending_diffs: int = 0
-
-
-class BlockListResponse(BaseModel):
-    """List of memory blocks."""
-
-    blocks: list[BlockResponse]
 
 
 class BlockUpdateRequest(BaseModel):
@@ -55,17 +48,6 @@ class VersionListResponse(BaseModel):
     """List of versions."""
 
     versions: list[VersionResponse]
-
-
-class ProposalResponse(BaseModel):
-    """Pending proposal response."""
-
-    branch_name: str
-    block_label: str
-    agent_id: str
-    reasoning: str
-    confidence: str
-    created_at: datetime
 
 
 class ProposalDiffResponse(BaseModel):
@@ -110,17 +92,14 @@ class RestoreRequest(BaseModel):
     commit_sha: str
 
 
-# Dependency
 DoltDep = Annotated[DoltClient, Depends(get_dolt_client)]
 
 
-# Endpoints
 @router.get("", response_model=list[BlockResponse])
 async def list_blocks(user_id: str, dolt: DoltDep) -> list[BlockResponse]:
     """List all memory blocks for a user."""
     blocks = await dolt.list_blocks(user_id)
 
-    # Get per-block pending counts
     proposals = await dolt.list_proposals(user_id)
     pending_by_block = {p.block_label: 1 for p in proposals}
 
@@ -275,7 +254,6 @@ async def restore_block(
     )
 
 
-# Proposal endpoints
 @router.get("/{label}/diffs", response_model=list[ProposalDiffResponse])
 async def get_pending_diffs(
     user_id: str,
@@ -286,7 +264,6 @@ async def get_pending_diffs(
     diff = await dolt.get_proposal_diff(user_id, label)
     if not diff:
         return []
-    # Convert branch_name to URL-safe ID (replace / with __)
     branch_name = str(diff["branch_name"])
     url_safe_id = branch_name.replace("/", "__")
     return [

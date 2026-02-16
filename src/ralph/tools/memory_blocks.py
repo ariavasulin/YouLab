@@ -21,10 +21,6 @@ def _run_async_with_fresh_client(async_fn: Any) -> Any:
 
     Creates a fresh DoltClient for thread-pool executions to avoid
     event loop attachment issues with the global singleton.
-
-    Args:
-        async_fn: A callable that takes a DoltClient and returns a coroutine.
-
     """
 
     async def _execute() -> Any:
@@ -68,14 +64,6 @@ class MemoryBlockTools(Toolkit):
     """
 
     def __init__(self, agent_id: str = "ralph", **kwargs: Any) -> None:
-        """
-        Initialize memory block tools.
-
-        Args:
-            agent_id: Identifier for this agent (used in proposals).
-            **kwargs: Additional arguments passed to Toolkit base class.
-
-        """
         self.agent_id = agent_id
 
         tools = [
@@ -87,17 +75,7 @@ class MemoryBlockTools(Toolkit):
         super().__init__(name="memory_block_tools", tools=tools, **kwargs)
 
     def list_memory_blocks(self, run_context: RunContext) -> str:
-        """
-        List all available memory blocks for the current student.
-
-        Args:
-            run_context: Agno run context with user_id (auto-injected).
-
-        Returns:
-            A formatted list of memory blocks with their labels and titles,
-            or a message if no blocks exist.
-
-        """
+        """List all available memory blocks for the current student."""
         user_id = _get_user_id(run_context)
         if not user_id:
             return "Unable to identify student. No user context available."
@@ -124,19 +102,7 @@ class MemoryBlockTools(Toolkit):
             return f"Error listing memory blocks: {e}"
 
     def read_memory_block(self, run_context: RunContext, block_label: str) -> str:
-        """
-        Read the current content of a memory block.
-
-        Use this before proposing edits to see the exact current content.
-
-        Args:
-            run_context: Agno run context with user_id (auto-injected).
-            block_label: The label/identifier of the block to read (e.g., "student", "goals")
-
-        Returns:
-            The block's current content, or an error message if not found.
-
-        """
+        """Read the current content of a memory block. Use this before proposing edits."""
         user_id = _get_user_id(run_context)
         if not user_id:
             return "Unable to identify student. No user context available."
@@ -178,24 +144,11 @@ class MemoryBlockTools(Toolkit):
 
         IMPORTANT: You must read the memory block first to see its exact content.
         The edit will FAIL if old_string is not found or is not unique.
-
-        Args:
-            run_context: Agno run context with user_id (auto-injected).
-            block_label: The label of the block to edit (e.g., "student", "goals")
-            old_string: The exact text to find and replace. Must be unique unless replace_all=True.
-            new_string: The text to replace it with. Must be different from old_string.
-            reasoning: Brief explanation of why this edit is needed (shown to user for approval).
-            replace_all: If True, replace all occurrences. If False (default), old_string must be unique.
-
-        Returns:
-            Success message if proposal created, or error message explaining what went wrong.
-
         """
         user_id = _get_user_id(run_context)
         if not user_id:
             return "Unable to identify student. No user context available."
 
-        # Validate inputs
         if old_string == new_string:
             return "Error: old_string and new_string must be different."
 
@@ -208,14 +161,12 @@ class MemoryBlockTools(Toolkit):
         try:
 
             async def _propose(dolt: DoltClient) -> tuple[str | None, str | None]:
-                # Get current block content
                 block = await dolt.get_block(user_id, block_label)
                 if not block:
                     return None, f"Error: Memory block '{block_label}' not found."
 
                 current_body = block.body or ""
 
-                # Check if old_string exists
                 if old_string not in current_body:
                     return None, (
                         f"Error: old_string not found in block '{block_label}'. "
@@ -223,7 +174,6 @@ class MemoryBlockTools(Toolkit):
                         "(including whitespace and newlines)."
                     )
 
-                # Check uniqueness unless replace_all
                 occurrence_count = current_body.count(old_string)
                 if occurrence_count > 1 and not replace_all:
                     return None, (
@@ -232,13 +182,11 @@ class MemoryBlockTools(Toolkit):
                         "or set replace_all=True to replace all occurrences."
                     )
 
-                # Apply the replacement
                 if replace_all:
                     new_body = current_body.replace(old_string, new_string)
                 else:
                     new_body = current_body.replace(old_string, new_string, 1)
 
-                # Create the proposal via Dolt
                 branch_name = await dolt.create_proposal(
                     user_id=user_id,
                     block_label=block_label,

@@ -57,10 +57,8 @@ def get_workspace_path(user_id: str) -> Path:
     """Get workspace directory - shared or per-user."""
     settings = get_settings()
     if settings.agent_workspace:
-        # Shared workspace (e.g., a codebase)
         workspace = Path(settings.agent_workspace)
     else:
-        # Per-user isolated workspace
         workspace = Path(settings.user_data_dir) / user_id / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
     return workspace
@@ -104,10 +102,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     log.info("ralph_server_starting", model=settings.openrouter_model)
 
-    # Capture event loop for sync hooks (needed when Agno runs tools in thread pool)
     capture_event_loop()
 
-    # Initialize Dolt connection pool
     dolt = None
     try:
         dolt = await get_dolt_client()
@@ -116,7 +112,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         log.warning("dolt_client_connection_failed", error=str(e))
         # Continue without Dolt - blocks API will fail but chat will work
 
-    # Initialize background task system
     if dolt:
         try:
             registry = get_registry()
@@ -131,7 +126,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    # Shutdown
     await stop_scheduler()
     log.info("background_scheduler_stopped")
 
@@ -150,7 +144,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware - allow OpenWebUI frontend to call Ralph API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -164,20 +157,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the blocks API router
 app.include_router(blocks_router)
-
-# Include the background tasks API router
 app.include_router(background_router)
-
-# Include the notes adapter at /api prefix for OpenWebUI compatibility
-# OpenWebUI calls /api/you/notes/* endpoints
-app.include_router(notes_router, prefix="/api")
-
-# Include the workspace sync API router
+app.include_router(notes_router, prefix="/api")  # OpenWebUI calls /api/you/notes/*
 app.include_router(workspace_router)
-
-# Include the chat injection API router
 app.include_router(chats_router)
 
 
@@ -206,15 +189,12 @@ async def chat_stream(request: ChatRequest) -> EventSourceResponse:
         else:
             log.info("claude_md_not_found", workspace=str(workspace))
 
-        # Extract system message from OpenWebUI (per-chat system prompt)
         system_message = ""
         chat_messages = list(request.messages)
         if chat_messages and chat_messages[0].role == "system":
             system_message = chat_messages.pop(0).content
             log.info("system_message_extracted", length=len(system_message))
 
-        # Build base instructions — use per-chat system prompt if provided,
-        # otherwise fall back to the default generic prompt
         if system_message:
             base_instructions = system_message
         else:
@@ -223,7 +203,6 @@ async def chat_stream(request: ChatRequest) -> EventSourceResponse:
                 "Always be helpful, encouraging, and focused on the student's learning goals."
             )
 
-        # Append tool usage instructions regardless of system prompt source
         tool_instructions = f"""
 ## Tool Usage
 
@@ -257,7 +236,6 @@ Write complete LaTeX documents with \\documentclass, \\begin{{document}}, etc.
 Use sections, math environments, theorems, and all standard LaTeX features.
 The student never sees LaTeX — they only see the beautiful PDF result."""
 
-        # Initialize welcome blocks for new users + build memory context
         memory_context = ""
         is_new_user = False
         try:
@@ -274,7 +252,6 @@ The student never sees LaTeX — they only see the beautiful PDF result."""
         except Exception as e:
             log.warning("memory_context_load_failed", user_id=request.user_id, error=str(e))
 
-        # Compose final instructions
         instructions_parts = [base_instructions, tool_instructions]
 
         if claude_md:
@@ -295,7 +272,6 @@ The following information has been recorded about this student. Use this to pers
 
         instructions = "\n\n".join(instructions_parts)
 
-        # Build the agent with tools (strip Agno fields Mistral doesn't accept)
         file_tools = HookedFileTools(
             base_dir=workspace,
             user_id=request.user_id,
@@ -319,11 +295,9 @@ The following information has been recorded about this student. Use this to pers
             markdown=True,
         )
 
-        # Format messages for Agno (using chat_messages with system message stripped)
         if len(chat_messages) <= 1:
             prompt = chat_messages[-1].content if chat_messages else ""
         else:
-            # Build context from previous messages
             history_parts = []
             for msg in chat_messages[:-1]:
                 role_label = "User" if msg.role == "user" else "Assistant"
@@ -341,7 +315,6 @@ The following information has been recorded about this student. Use this to pers
 Now, the user says:
 {current_message}"""
 
-        # Persist user message to Honcho (fire-and-forget)
         last_user_message = chat_messages[-1].content if chat_messages else ""
         persist_message_fire_and_forget(
             user_id=request.user_id,
@@ -356,10 +329,8 @@ Now, the user says:
                 "data": json.dumps({"type": "status", "content": "Thinking..."}),
             }
 
-            # Accumulate response for persistence
             response_chunks: list[str] = []
 
-            # Stream the response (pass user context for HonchoTools)
             async for chunk in agent.arun(
                 prompt,
                 stream=True,
@@ -426,7 +397,6 @@ Now, the user says:
 
             yield {"event": "message", "data": json.dumps({"type": "done"})}
 
-            # Persist assistant response to Honcho (fire-and-forget)
             full_response = "".join(response_chunks)
             if full_response:
                 persist_message_fire_and_forget(
@@ -436,7 +406,6 @@ Now, the user says:
                     is_user=False,
                 )
 
-            # Track user activity for idle triggers
             try:
                 dolt_client = await get_dolt_client()
                 await dolt_client.update_user_activity(request.user_id, datetime.now(UTC))

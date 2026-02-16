@@ -1,1 +1,0 @@
-"""Strategy agent tests package."""

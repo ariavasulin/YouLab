@@ -4,6 +4,9 @@
 .env.*.local
 .env.production
 
+# AI agent config (contains local paths/credentials)
+CLAUDE.md
+
 # Cloudflare Tunnel credentials
 *.json
 !package*.json

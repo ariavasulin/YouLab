@@ -27,7 +27,7 @@ repos:
 
       - id: pytest
         name: pytest
-        entry: uv run pytest tests/ralph/
+        entry: uv run pytest tests/ralph/ --no-cov
         language: system
         types: [python]
         pass_filenames: false

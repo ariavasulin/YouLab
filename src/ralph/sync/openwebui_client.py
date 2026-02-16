@@ -14,10 +14,8 @@ import structlog
 
 log = structlog.get_logger()
 
-# Default timeout for API calls
 DEFAULT_TIMEOUT = 60.0
 
-# HTTP 204 No Content status code
 HTTP_NO_CONTENT = 204
 
 
@@ -29,7 +27,6 @@ class OpenWebUIError(Exception):
         self.status_code = status_code
 
 
-# Extensions that should be uploaded as text/plain so OpenWebUI can index them
 _TEXT_EXTENSIONS = {
     ".tex",
     ".txt",
@@ -101,15 +98,6 @@ class OpenWebUIClient:
         api_key: str,
         timeout: float = DEFAULT_TIMEOUT,
     ) -> None:
-        """
-        Initialize client.
-
-        Args:
-            base_url: OpenWebUI base URL (e.g., https://openwebui.example.com).
-            api_key: API key for authentication.
-            timeout: Request timeout in seconds.
-
-        """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
@@ -146,7 +134,6 @@ class OpenWebUIClient:
             response = await client.request(method, path, **kwargs)
             response.raise_for_status()
 
-            # Some endpoints return empty response
             if response.status_code == HTTP_NO_CONTENT or not response.content:
                 return None
 
@@ -176,29 +163,15 @@ class OpenWebUIClient:
             log.error("openwebui_timeout", method=method, path=path)
             raise OpenWebUIError("Request timed out") from e
 
-    # File Operations
-
     async def upload_file(
         self, filename: str, content: bytes, content_type: str | None = None
     ) -> dict[str, Any]:
-        """
-        Upload a file to OpenWebUI.
-
-        Args:
-            filename: Name for the uploaded file.
-            content: File content as bytes.
-            content_type: MIME type. If None, inferred from extension.
-
-        Returns:
-            File metadata including 'id'.
-
-        """
+        """Upload a file to OpenWebUI. Returns file metadata including 'id'."""
         client = await self._get_client()
 
         if content_type is None:
             content_type = _guess_content_type(filename)
 
-        # OpenWebUI expects multipart form data
         files = {"file": (filename, io.BytesIO(content), content_type)}
 
         try:
@@ -212,30 +185,8 @@ class OpenWebUIClient:
                 status_code=e.response.status_code,
             ) from e
 
-    async def get_file(self, file_id: str) -> dict[str, Any]:
-        """
-        Get file metadata.
-
-        Args:
-            file_id: OpenWebUI file ID.
-
-        Returns:
-            File metadata.
-
-        """
-        return await self._request("GET", f"/api/v1/files/{file_id}")  # type: ignore[no-any-return]
-
     async def get_file_content(self, file_id: str) -> bytes:
-        """
-        Download file content.
-
-        Args:
-            file_id: OpenWebUI file ID.
-
-        Returns:
-            File content as bytes.
-
-        """
+        """Download file content by ID."""
         client = await self._get_client()
 
         try:
@@ -249,25 +200,11 @@ class OpenWebUIClient:
             ) from e
 
     async def delete_file(self, file_id: str) -> None:
-        """
-        Delete a file.
-
-        Args:
-            file_id: OpenWebUI file ID.
-
-        """
+        """Delete a file by ID."""
         await self._request("DELETE", f"/api/v1/files/{file_id}")
 
-    # Knowledge Base Operations
-
     async def list_knowledge(self) -> list[dict[str, Any]]:
-        """
-        List all knowledge bases.
-
-        Returns:
-            List of knowledge base metadata.
-
-        """
+        """List all knowledge bases."""
         result = await self._request("GET", "/api/v1/knowledge/")
         # OpenWebUI wraps the list in {"items": [...]}
         if isinstance(result, dict) and "items" in result:
@@ -275,17 +212,7 @@ class OpenWebUIClient:
         return result  # type: ignore[no-any-return]
 
     async def create_knowledge(self, name: str, description: str = "") -> dict[str, Any]:
-        """
-        Create a new knowledge base.
-
-        Args:
-            name: Knowledge base name.
-            description: Optional description.
-
-        Returns:
-            Knowledge base metadata including 'id'.
-
-        """
+        """Create a new knowledge base."""
         return await self._request(  # type: ignore[no-any-return]
             "POST",
             "/api/v1/knowledge/create",
@@ -293,50 +220,23 @@ class OpenWebUIClient:
         )
 
     async def get_or_create_knowledge(self, name: str) -> dict[str, Any]:
-        """
-        Get existing knowledge base by name or create new.
-
-        Args:
-            name: Knowledge base name.
-
-        Returns:
-            Knowledge base metadata.
-
-        """
-        # List existing
+        """Get existing knowledge base by name or create new."""
         kbs = await self.list_knowledge()
         for kb in kbs:
             if kb.get("name") == name:
                 return kb
 
-        # Create new
         log.info("creating_knowledge_base", name=name)
         return await self.create_knowledge(name)
 
     async def get_knowledge_files(self, knowledge_id: str) -> list[dict[str, Any]]:
-        """
-        Get files in a knowledge base.
-
-        Args:
-            knowledge_id: Knowledge base ID.
-
-        Returns:
-            List of file metadata.
-
-        """
+        """Get files in a knowledge base."""
         kb = await self._request("GET", f"/api/v1/knowledge/{knowledge_id}")
         # Files are nested under 'files' key (can be None)
         return kb.get("files") or []  # type: ignore[no-any-return]
 
     async def add_file_to_knowledge(self, knowledge_id: str, file_id: str) -> None:
-        """
-        Add a file to a knowledge base.
-
-        Args:
-            knowledge_id: Knowledge base ID.
-            file_id: File ID to add.
-
-        """
+        """Add a file to a knowledge base."""
         await self._request(
             "POST",
             f"/api/v1/knowledge/{knowledge_id}/file/add",
@@ -344,14 +244,7 @@ class OpenWebUIClient:
         )
 
     async def remove_file_from_knowledge(self, knowledge_id: str, file_id: str) -> None:
-        """
-        Remove a file from a knowledge base.
-
-        Args:
-            knowledge_id: Knowledge base ID.
-            file_id: File ID to remove.
-
-        """
+        """Remove a file from a knowledge base."""
         await self._request(
             "POST",
             f"/api/v1/knowledge/{knowledge_id}/file/remove",
